@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Immittance Simulator — Supervisor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; }
+
+    #pin-denied {
+      display: none;
+      padding: 40px;
+      text-align: center;
+      font-size: 16px;
+      color: #c00;
+    }
+
+    #admin-app {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    #admin-header {
+      background: #3a6f86;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #admin-header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+    #admin-header a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; }
+    #admin-header a:hover { color: #fff; }
+
+    #admin-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Left: patient list */
+    #patient-list-panel {
+      width: 260px;
+      min-width: 220px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #patient-list-header {
+      padding: 10px 12px;
+      background: #4a7f96;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #patient-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .patient-list-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    .patient-list-item:hover { background: #f5f5f5; }
+    .patient-list-item.selected { background: #e0f0fa; }
+    .patient-list-name { font-size: 13px; font-weight: 500; display: block; }
+    .patient-list-actions { display: flex; gap: 6px; margin-top: 4px; }
+    .patient-list-actions button {
+      font-size: 11px;
+      padding: 2px 8px;
+      cursor: pointer;
+      border: 1px solid #bbb;
+      background: #fff;
+      border-radius: 3px;
+    }
+    .patient-list-actions button:hover { background: #eee; }
+    .patient-list-actions button.danger { color: #c00; border-color: #c00; }
+    .patient-list-actions button.danger:hover { background: #fee; }
+
+    #list-footer {
+      padding: 8px;
+      display: flex;
+      gap: 6px;
+      border-top: 1px solid #ddd;
+      flex-wrap: wrap;
+    }
+    #list-footer button, #list-footer label {
+      flex: 1;
+      padding: 6px 4px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid #4a7f96;
+      background: #4a7f96;
+      color: #fff;
+      border-radius: 3px;
+      text-align: center;
+    }
+    #list-footer button:hover, #list-footer label:hover { background: #3a6f86; }
+    #list-footer .secondary { background: #fff; color: #4a7f96; }
+    #list-footer .secondary:hover { background: #eaf4fa; }
+    #list-footer .danger { background: #fff; color: #c00; border-color: #c00; }
+    #list-footer .danger:hover { background: #fee; }
+
+    /* Right: edit panel */
+    #edit-panel {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+
+    #edit-panel h2 { font-size: 15px; color: #3a6f86; margin-bottom: 12px; }
+    #edit-panel h3 { font-size: 13px; color: #555; margin: 16px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+    .field-row label {
+      width: 180px;
+      font-size: 12px;
+      color: #444;
+      flex-shrink: 0;
+    }
+    .field-row input, .field-row select {
+      flex: 1;
+      max-width: 160px;
+      padding: 4px 7px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .field-hint {
+      font-size: 10px;
+      color: #999;
+      margin-left: 4px;
+    }
+
+    .ear-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .ear-section { }
+    .ear-label {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      padding: 4px 8px;
+      border-radius: 3px;
+    }
+    .ear-label.right { background: rgba(200,50,50,0.1); color: #c00; }
+    .ear-label.left  { background: rgba(50,80,200,0.1); color: #3355cc; }
+
+    .reflex-grid-table {
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-top: 6px;
+    }
+    .reflex-grid-table th {
+      background: #4a7f96;
+      color: #fff;
+      padding: 3px 8px;
+      text-align: center;
+    }
+    .reflex-grid-table td {
+      border: 1px solid #ddd;
+      padding: 2px 4px;
+      text-align: center;
+    }
+    .reflex-grid-table td:first-child {
+      background: #eaf4fa;
+      font-weight: 600;
+      color: #3a6f86;
+      text-align: left;
+      padding-left: 6px;
+    }
+    .reflex-grid-table input {
+      width: 55px;
+      padding: 2px 4px;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .save-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .save-row button {
+      padding: 8px 20px;
+      background: #4a7f96;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .save-row button:hover { background: #3a6f86; }
+    #status-msg { font-size: 12px; color: #2a7a2a; font-style: italic; }
+
+    .name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .name-row label { font-size: 13px; font-weight: 600; }
+    .name-row input {
+      flex: 1;
+      padding: 5px 8px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+
+    #export-section {
+      background: #fff;
+      border-top: 1px solid #ddd;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #export-section p { font-size: 12px; color: #555; flex: 1; }
+    #export-section button {
+      padding: 8px 18px;
+      background: #2a7a2a;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    #export-section button:hover { background: #1e5e1e; }
+
+    /* Reflex shape picker */
+    .shape-picker {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .shape-card {
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      background: #fafafa;
+      text-align: center;
+      width: 160px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .shape-card:hover { border-color: #4a7f96; background: #f0f7fb; }
+    .shape-card.selected { border-color: #3a6f86; background: #e0f0fa; }
+    .shape-card canvas { display: block; margin: 0 auto 4px; }
+    .shape-card .shape-name { font-size: 12px; font-weight: 700; color: #3a6f86; }
+    .shape-card .shape-desc { font-size: 10px; color: #777; margin-top: 2px; line-height: 1.3; }
+  </style>
+</head>
+<body>
+
+<div id="pin-denied">
+  <p>&#128274; Access denied. <a href="index.html">Return to simulator</a></p>
+</div>
+
+<div id="admin-app">
+
+  <div id="admin-header">
+    <h1>&#9881; Supervisor — Patient Preset Editor</h1>
+    <a href="index.html">&#8592; Back to Simulator</a>
+  </div>
+
+  <div id="admin-body">
+
+    <!-- LEFT: Patient list -->
+    <div id="patient-list-panel">
+      <div id="patient-list-header">
+        Patients
+      </div>
+      <ul id="patient-list"></ul>
+      <div id="list-footer">
+        <button onclick="newPatient()">+ New</button>
+        <button class="danger" onclick="resetDefaults()">Reset defaults</button>
+        <label class="secondary">
+          &#128194; Import JSON
+          <input type="file" id="import-admin" accept=".json" style="display:none">
+        </label>
+      </div>
+    </div>
+
+    <!-- RIGHT: Edit panel -->
+    <div id="edit-panel">
+
+      <h2>Edit Patient</h2>
+
+      <div class="name-row">
+        <label>Name:</label>
+        <input type="text" id="edit-name" placeholder="e.g. Patient A — Normal Bilateral">
+      </div>
+
+      <div class="ear-grid">
+
+        <!-- RIGHT EAR -->
+        <div class="ear-section">
+          <div class="ear-label right">&#128266; Right Ear</div>
+
+          <div class="field-row">
+            <label>Tympanogram Type</label>
+            <select id="right-tympType">
+              <option value="A">A — Normal</option>
+              <option value="As">As — Shallow / Stiff</option>
+              <option value="Ad">Ad — Deep / Hypermobile</option>
+              <option value="B">B — Flat</option>
+              <option value="C">C — Negative Pressure</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>Peak Admittance (mmho)</label>
+            <input type="number" id="right-peakAdmittance" step="0.01" min="0" max="5">
+            <span class="field-hint">Normal: 0.3–1.6</span>
+          </div>
+          <div class="field-row">
+            <label>Peak Pressure / TPP (daPa)</label>
+            <input type="number" id="right-TPP" step="1" min="-600" max="300">
+            <span class="field-hint">Normal: -100 to +50</span>
+          </div>
+          <div class="field-row">
+            <label>Ear Canal Volume (ml)</label>
+            <input type="number" id="right-ECV" step="0.01" min="0" max="5">
+            <span class="field-hint">Adult: 0.6–2.0</span>
+          </div>
+          <div class="field-row">
+            <label>Gradient / Width (daPa)</label>
+            <input type="number" id="right-gradient" step="1" min="0" max="400">
+            <span class="field-hint">Normal: 50–150; 0 for Type B</span>
+          </div>
+
+          <h3>Reflex Trace Shape — Right Ear</h3>
+          <div class="shape-picker" id="shape-picker-right">
+            <div class="shape-card" data-shape="standard" onclick="selectShape('right','standard')">
+              <canvas id="shape-preview-right-standard" width="120" height="44"></canvas>
+              <div class="shape-name">Standard</div>
+              <div class="shape-desc">Fast onset, exponential recovery.</div>
+            </div>
+            <div class="shape-card" data-shape="symmetric" onclick="selectShape('right','symmetric')">
+              <canvas id="shape-preview-right-symmetric" width="120" height="44"></canvas>
+              <div class="shape-name">Symmetric</div>
+              <div class="shape-desc">Smooth U-bowl, flat baseline.</div>
+            </div>
+            <div class="shape-card" data-shape="drifting" onclick="selectShape('right','drifting')">
+              <canvas id="shape-preview-right-drifting" width="120" height="44"></canvas>
+              <div class="shape-name">Drifting</div>
+              <div class="shape-desc">Drifting baseline, 2 kHz rebound.</div>
+            </div>
+          </div>
+
+          <h3>Reflex Thresholds — Right Ear Probe</h3>
+          <p style="font-size:11px;color:#777;margin-bottom:6px">Leave blank = absent. Enter dB HL threshold (e.g. 85).</p>
+          <table class="reflex-grid-table">
+            <thead>
+              <tr><th>Mode / Freq</th><th>500 Hz</th><th>1 kHz</th><th>2 kHz</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ipsilateral</td>
+                <td><input type="number" id="right-reflex-ipsi-500"  min="70" max="110" step="5"></td>
+                <td><input type="number" id="right-reflex-ipsi-1000" min="70" max="110" step="5"></td>
+                <td><input type="number" id="right-reflex-ipsi-2000" min="70" max="110" step="5"></td>
+              </tr>
+              <tr>
+                <td>Contralateral</td>
+                <td><input type="number" id="right-reflex-contra-500"  min="70" max="110" step="5"></td>
+                <td><input type="number" id="right-reflex-contra-1000" min="70" max="110" step="5"></td>
+                <td><input type="number" id="right-reflex-contra-2000" min="70" max="110" step="5"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div><!-- /right ear -->
+
+        <!-- LEFT EAR -->
+        <div class="ear-section">
+          <div class="ear-label left">&#128266; Left Ear</div>
+
+          <div class="field-row">
+            <label>Tympanogram Type</label>
+            <select id="left-tympType">
+              <option value="A">A — Normal</option>
+              <option value="As">As — Shallow / Stiff</option>
+              <option value="Ad">Ad — Deep / Hypermobile</option>
+              <option value="B">B — Flat</option>
+              <option value="C">C — Negative Pressure</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>Peak Admittance (mmho)</label>
+            <input type="number" id="left-peakAdmittance" step="0.01" min="0" max="5">
+            <span class="field-hint">Normal: 0.3–1.6</span>
+          </div>
+          <div class="field-row">
+            <label>Peak Pressure / TPP (daPa)</label>
+            <input type="number" id="left-TPP" step="1" min="-600" max="300">
+            <span class="field-hint">Normal: -100 to +50</span>
+          </div>
+          <div class="field-row">
+            <label>Ear Canal Volume (ml)</label>
+            <input type="number" id="left-ECV" step="0.01" min="0" max="5">
+            <span class="field-hint">Adult: 0.6–2.0</span>
+          </div>
+          <div class="field-row">
+            <label>Gradient / Width (daPa)</label>
+            <input type="number" id="left-gradient" step="1" min="0" max="400">
+            <span class="field-hint">Normal: 50–150; 0 for Type B</span>
+          </div>
+
+          <h3>Reflex Trace Shape — Left Ear</h3>
+          <div class="shape-picker" id="shape-picker-left">
+            <div class="shape-card" data-shape="standard" onclick="selectShape('left','standard')">
+              <canvas id="shape-preview-left-standard" width="120" height="44"></canvas>
+              <div class="shape-name">Standard</div>
+              <div class="shape-desc">Fast onset, exponential recovery.</div>
+            </div>
+            <div class="shape-card" data-shape="symmetric" onclick="selectShape('left','symmetric')">
+              <canvas id="shape-preview-left-symmetric" width="120" height="44"></canvas>
+              <div class="shape-name">Symmetric</div>
+              <div class="shape-desc">Smooth U-bowl, flat baseline.</div>
+            </div>
+            <div class="shape-card" data-shape="drifting" onclick="selectShape('left','drifting')">
+              <canvas id="shape-preview-left-drifting" width="120" height="44"></canvas>
+              <div class="shape-name">Drifting</div>
+              <div class="shape-desc">Drifting baseline, 2 kHz rebound.</div>
+            </div>
+          </div>
+
+          <h3>Reflex Thresholds — Left Ear Probe</h3>
+          <p style="font-size:11px;color:#777;margin-bottom:6px">Leave blank = absent. Enter dB HL threshold (e.g. 85).</p>
+          <table class="reflex-grid-table">
+            <thead>
+              <tr><th>Mode / Freq</th><th>500 Hz</th><th>1 kHz</th><th>2 kHz</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ipsilateral</td>
+                <td><input type="number" id="left-reflex-ipsi-500"  min="70" max="110" step="5"></td>
+                <td><input type="number" id="left-reflex-ipsi-1000" min="70" max="110" step="5"></td>
+                <td><input type="number" id="left-reflex-ipsi-2000" min="70" max="110" step="5"></td>
+              </tr>
+              <tr>
+                <td>Contralateral</td>
+                <td><input type="number" id="left-reflex-contra-500"  min="70" max="110" step="5"></td>
+                <td><input type="number" id="left-reflex-contra-1000" min="70" max="110" step="5"></td>
+                <td><input type="number" id="left-reflex-contra-2000" min="70" max="110" step="5"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div><!-- /left ear -->
+
+      </div><!-- /ear-grid -->
+
+      <div class="save-row">
+        <button onclick="saveEdit()">&#128190; Save Patient</button>
+        <span id="status-msg"></span>
+      </div>
+
+    </div><!-- /edit-panel -->
+
+  </div><!-- /admin-body -->
+
+  <!-- Export bar -->
+  <div id="export-section">
+    <p>
+      <strong>Deploy:</strong> Click Export to download <code>patients.json</code>,
+      then commit it to the root of your GitHub Pages repository.
+      The simulator will load it automatically when students open the page.
+    </p>
+    <button onclick="exportJSON()">&#11015; Export patients.json</button>
+  </div>
+
+</div><!-- /admin-app -->
+
+<script src="defaultPatients.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

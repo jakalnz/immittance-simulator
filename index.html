@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Immittance Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ─── SIDEBAR ─────────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <div id="sidebar-top">
+      <span>&#9776;</span>
+      <span style="flex:1">Menu</span>
+      <button class="icon-btn">&#128247;</button>
+      <button class="icon-btn">&#128190;</button>
+    </div>
+
+    <!-- Patient select -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Patient</div>
+      <select id="patient-select"></select>
+    </div>
+
+    <!-- Session info -->
+    <div class="sidebar-section">
+      <div id="session-info">
+        <div id="session-date">—</div>
+        <div id="probe-status">No probe</div>
+      </div>
+    </div>
+
+    <!-- Probe ear selector -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Probe Ear</div>
+      <div class="radio-row">
+        <label>
+          <input type="radio" name="probe-ear" id="probe-ear-toggle" value="right" checked>
+          Right
+        </label>
+        <label>
+          <input type="radio" name="probe-ear" id="probe-ear-left" value="left">
+          Left
+        </label>
+      </div>
+    </div>
+
+    <!-- WBT / mode -->
+    <div class="sidebar-section">
+      <div class="radio-row" style="margin-bottom:4px">
+        <label><input type="radio" name="mode-auto" checked> Auto</label>
+        <label><input type="radio" name="mode-auto"> Manual</label>
+      </div>
+      <select id="wbt-select">
+        <option>Adult</option>
+        <option>Child</option>
+      </select>
+    </div>
+
+    <!-- Probe indicator -->
+    <div id="probe-area">
+      <div class="ear-icon">&#128266;</div>
+      <div class="probe-wheel"></div>
+    </div>
+
+    <!-- Mode buttons -->
+    <div class="mode-buttons">
+      <button class="mode-btn active" data-mode="tymp">
+        <span>Tymp 226Hz</span>
+        <span class="check">&#10003;</span>
+      </button>
+      <button class="mode-btn" data-mode="arts-ipsi">
+        <span>ARTs ipsi</span>
+        <span class="check">&#10003;</span>
+      </button>
+      <button class="mode-btn" data-mode="arts-contra">
+        <span>ARTs contra</span>
+        <span class="check">&#10003;</span>
+      </button>
+    </div>
+
+    <!-- Offset control (ARTs only) -->
+    <div id="offset-section" class="hidden">
+      <div class="sidebar-label">Offset pressure</div>
+      <div class="offset-labels"><span>-200</span><span>+200</span></div>
+      <input id="offset-slider" type="range" min="-200" max="200" step="5" value="0">
+      <div class="offset-display" id="offset-display">P = 0 daPa</div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <!-- Import + Print -->
+    <div class="sidebar-actions">
+      <label class="action-btn" title="Load patient presets from JSON file">
+        &#128194; Import
+        <input type="file" id="import-input" accept=".json" style="display:none">
+      </label>
+      <button class="action-btn" id="print-btn" title="Print summary">&#128438; Print</button>
+      <a class="action-btn" href="admin.html" title="Supervisor preset editor">&#9881; Admin</a>
+    </div>
+
+    <button id="start-btn">START</button>
+
+  </aside>
+
+  <!-- ─── MAIN CONTENT ──────────────────────────────────────── -->
+  <main id="main-content">
+
+    <!-- TYMPANOGRAM VIEW -->
+    <div id="tymp-view" class="view active">
+
+      <div class="tymp-panels">
+
+        <!-- RIGHT EAR -->
+        <div class="tymp-panel">
+          <div class="tymp-header right">&#128266; Tymp 226 Hz &nbsp; Right Ear</div>
+          <div class="tymp-canvas-wrap">
+            <canvas id="tymp-canvas-right"></canvas>
+          </div>
+          <div class="tymp-results" id="results-right">
+            <div class="tymp-result-item">
+              <span class="result-label">Tympanogram</span>
+              <span class="result-value pending" data-field="type">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Pressure (daPa)</span>
+              <span class="result-value pending" data-field="pressure">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Volume (ml)</span>
+              <span class="result-value pending" data-field="volume">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Admittance (mmho)</span>
+              <span class="result-value pending" data-field="admittance">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Gradient (daPa)</span>
+              <span class="result-value pending" data-field="gradient">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LEFT EAR -->
+        <div class="tymp-panel">
+          <div class="tymp-header left">&#128266; Tymp 226 Hz &nbsp; Left Ear</div>
+          <div class="tymp-canvas-wrap">
+            <canvas id="tymp-canvas-left"></canvas>
+          </div>
+          <div class="tymp-results" id="results-left">
+            <div class="tymp-result-item">
+              <span class="result-label">Tympanogram</span>
+              <span class="result-value pending" data-field="type">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Pressure (daPa)</span>
+              <span class="result-value pending" data-field="pressure">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Volume (ml)</span>
+              <span class="result-value pending" data-field="volume">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Admittance (mmho)</span>
+              <span class="result-value pending" data-field="admittance">—</span>
+            </div>
+            <div class="tymp-result-item">
+              <span class="result-label">Gradient (daPa)</span>
+              <span class="result-value pending" data-field="gradient">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /tymp-view -->
+
+    <!-- REFLEX VIEW -->
+    <div id="reflex-view" class="view">
+      <div id="reflex-header">Reflex  F:226 Hz  P:0 daPa</div>
+      <div id="reflex-grid-wrap">
+        <table id="reflex-grid"></table>
+      </div>
+    </div><!-- /reflex-view -->
+
+  </main>
+</div>
+
+<!-- Print-only div -->
+<div id="print-summary"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="defaultPatients.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
