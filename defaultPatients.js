@@ -84,7 +84,7 @@ const DEFAULT_PATIENTS = [
         reflexShape: "standard",
         reflexes: {
           ipsi:  { 500: null, 1000: null, 2000: null },
-          contra: { 500: 85, 1000: 90, 2000: 95 }
+          contra: { 500: null, 1000: null, 2000: null }
         }
       }
     }
@@ -162,7 +162,7 @@ const DEFAULT_PATIENTS = [
         reflexShape: "standard",
         reflexes: {
           ipsi:  { 500: null, 1000: null, 2000: null },
-          contra: { 500: 80, 1000: 80, 2000: 85 }
+          contra: { 500: null, 1000: null, 2000: null }
         }
       },
       left: {
