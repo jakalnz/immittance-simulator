@@ -29,10 +29,21 @@ function computeTympPoints(earData, noiseSeed) {
   const sigma = Math.max(gradient / 2.355, 10);
   const points = [];
 
+  // Slow sinusoidal wander parameters for Type B
+  const bWave1Amp   = rng() * 0.012;
+  const bWave1Freq  = 0.004 + rng() * 0.003;
+  const bWave1Phase = rng() * Math.PI * 2;
+  const bWave2Amp   = rng() * 0.006;
+  const bWave2Freq  = 0.009 + rng() * 0.005;
+  const bWave2Phase = rng() * Math.PI * 2;
+
+  let sampleIdx = 0;
   for (let p = -600; p <= 300; p += 4) {
     let y = 0;
     if (tympType === 'B') {
-      y = earData.peakAdmittance + (rng() - 0.5) * 0.04;
+      const wander = bWave1Amp * Math.sin(bWave1Freq * sampleIdx + bWave1Phase)
+                   + bWave2Amp * Math.sin(bWave2Freq * sampleIdx + bWave2Phase);
+      y = earData.peakAdmittance + wander + (rng() - 0.5) * 0.003;
     } else {
       const g = Math.exp(-Math.pow(p - TPP, 2) / (2 * sigma * sigma));
       y = peakAdmittance * g;
@@ -40,6 +51,7 @@ function computeTympPoints(earData, noiseSeed) {
       y += (rng() - 0.5) * 0.015; // subtle natural noise
     }
     points.push({ p, y: Math.max(0, y) });
+    sampleIdx++;
   }
   return points;
 }
