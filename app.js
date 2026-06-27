@@ -284,12 +284,12 @@ function drawTympCanvas(canvas, earData, ear, sweepX) {
 
   const { tympType, TPP, gradient, peakAdmittance, ECV } = earData;
 
-  // Dashed peak box (once sweep passes peak)
-  if (clampX >= TPP && tympType !== 'B') {
-    const bxL = tympXtoC(TPP - gradient * 0.75, plotW);
-    const bxR = tympXtoC(TPP + gradient * 0.75, plotW);
-    const byT = tympYtoC(peakAdmittance * 0.55, plotH);
-    const byB = tympYtoC(Math.min(peakAdmittance * 0.08, 0.15), plotH);
+  // Dashed normal-range reference box: fixed at ±100 daPa, 0.3–1.4 mmho
+  if (clampX >= 0) {
+    const bxL = tympXtoC(-100, plotW);
+    const bxR = tympXtoC( 100, plotW);
+    const byT = tympYtoC(1.4, plotH);
+    const byB = tympYtoC(0.3, plotH);
     ctx.setLineDash([4, 3]);
     ctx.strokeStyle = '#888';
     ctx.lineWidth = 1;
