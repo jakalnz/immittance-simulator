@@ -364,12 +364,13 @@ function drawReflexCell(canvas, trace, isPositive) {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Dotted overlay on pre-stimulus segment
+  // Dotted overlay — ends at ~16% of trace, before the deflection begins
+  const dotEnd = Math.round(N * 0.16);
   ctx.setLineDash([2, 3]);
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let i = 0; i < preStim; i++) {
+  for (let i = 0; i <= dotEnd; i++) {
     const x = (i / (N - 1)) * W;
     const y = midY - trace[i] * scale;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
