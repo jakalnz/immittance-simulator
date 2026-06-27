@@ -30,7 +30,6 @@
     <div class="sidebar-section">
       <div id="session-info">
         <div id="session-date">—</div>
-        <div id="probe-status">No probe</div>
       </div>
     </div>
 
@@ -67,20 +66,11 @@
       <div class="probe-wheel"></div>
     </div>
 
-    <!-- Mode buttons -->
-    <div class="mode-buttons">
-      <button class="mode-btn active" data-mode="tymp">
-        <span>Tymp 226Hz</span>
-        <span class="check">&#10003;</span>
-      </button>
-      <button class="mode-btn" data-mode="arts-ipsi">
-        <span>ARTs ipsi</span>
-        <span class="check">&#10003;</span>
-      </button>
-      <button class="mode-btn" data-mode="arts-contra">
-        <span>ARTs contra</span>
-        <span class="check">&#10003;</span>
-      </button>
+    <!-- Mode buttons (hidden until patient selected) -->
+    <div class="mode-buttons" id="mode-buttons" style="display:none">
+      <button class="mode-btn active" data-mode="tymp">Tymp 226Hz</button>
+      <button class="mode-btn" data-mode="arts-ipsi">ARTs ipsi</button>
+      <button class="mode-btn" data-mode="arts-contra">ARTs contra</button>
     </div>
 
     <!-- Offset control (ARTs only) -->

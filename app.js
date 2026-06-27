@@ -397,6 +397,7 @@ const els = {
   patientSelect: document.getElementById('patient-select'),
   startBtn:      document.getElementById('start-btn'),
   modeBtns:      document.querySelectorAll('.mode-btn'),
+  modeButtons:   document.getElementById('mode-buttons'),
   tympView:      document.getElementById('tymp-view'),
   reflexView:    document.getElementById('reflex-view'),
   reflexHeader:  document.getElementById('reflex-header'),
@@ -428,6 +429,7 @@ function loadPatients(patients) {
 function selectPatient(id) {
   state.currentPatient = state.patients.find(p => p.id === id) || null;
   if (!state.currentPatient) return;
+  els.modeButtons.style.display = '';
 
   // Pre-compute tympanogram points
   ['right', 'left'].forEach((ear, i) => {
