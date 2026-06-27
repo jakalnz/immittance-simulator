@@ -116,8 +116,8 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
     const drift2Freq  = 0.014 + rng() * 0.008;
     const drift2Phase = rng() * Math.PI * 2;
 
-    // Shape onset begins slightly before the formal stimulus marker
-    const earlyOnset = Math.round(N * 0.07);
+    // Shape onset begins before the formal stimulus marker
+    const earlyOnset = Math.round(N * 0.14);
     const shapeStart = preStim - earlyOnset;
 
     for (let i = 0; i < N; i++) {
@@ -149,13 +149,17 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
           }
 
         } else {
-          // standard: quick sin onset, exponential recovery; faster at higher freq
+          // standard: sin onset, exponential recovery tapered to guarantee return to baseline
           const peakFrac = freq === 500 ? 0.38 : freq === 1000 ? 0.28 : 0.20;
           const decayRate = freq === 500 ? 1.6 : freq === 1000 ? 2.4 : 3.4;
           const peak = peakFrac + shapeJitter;
-          shape = tPost < peak
-            ? Math.sin((tPost / peak) * Math.PI / 2)
-            : Math.exp(-(tPost - peak) * decayRate);
+          if (tPost < peak) {
+            shape = Math.sin((tPost / peak) * Math.PI / 2);
+          } else {
+            const exp  = Math.exp(-(tPost - peak) * decayRate);
+            const taper = Math.max(0, 1 - (tPost - peak) / (1 - peak)); // linear 1→0
+            shape = exp * taper;
+          }
         }
         y -= amplitude * shape;
       }
