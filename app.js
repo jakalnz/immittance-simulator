@@ -104,17 +104,25 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
 
     const shapeJitter = (rng() - 0.5) * 0.06;
 
-    // Slow baseline drift parameters (used by 'drifting', subtle in others)
-    const driftAmp   = reflexShape === 'drifting' ? 0.012 + rng() * 0.010 : 0.0015;
+    // Slow baseline drift: larger when absent/below-threshold, prominent for 'drifting'
+    const hasResponse = isAboveThreshold;
+    const driftAmp   = reflexShape === 'drifting' ? 0.012 + rng() * 0.010
+                     : !hasResponse               ? 0.008 + rng() * 0.006
+                     :                              0.0015;
     const driftFreq  = 0.008 + rng() * 0.006;   // cycles per sample
     const driftPhase = rng() * Math.PI * 2;
+    // Second slow wave for absent responses to add texture
+    const drift2Amp   = !hasResponse ? 0.004 + rng() * 0.004 : 0;
+    const drift2Freq  = 0.014 + rng() * 0.008;
+    const drift2Phase = rng() * Math.PI * 2;
 
     // Shape onset begins slightly before the formal stimulus marker
     const earlyOnset = Math.round(N * 0.07);
     const shapeStart = preStim - earlyOnset;
 
     for (let i = 0; i < N; i++) {
-      const baseline = driftAmp * Math.sin(driftFreq * i + driftPhase);
+      const baseline = driftAmp * Math.sin(driftFreq * i + driftPhase)
+                     + drift2Amp * Math.sin(drift2Freq * i + drift2Phase);
       let y = baseline + (rng() - 0.5) * 0.002;
 
       if (i >= shapeStart && isAboveThreshold) {
