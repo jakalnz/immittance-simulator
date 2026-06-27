@@ -11,6 +11,7 @@ const state = {
   selectedCell: null,
   probeEar: 'right',     // which ear the probe is in for reflex view
   trialCount: 0,         // increments each click so repeated presentations vary
+  ageGroup: 'adult',     // 'adult' | 'child' — controls tympanogram norm box
 };
 
 // ─── SEEDED RNG ───────────────────────────────────────────────────────────────
@@ -198,7 +199,7 @@ const X_MIN = -600, X_MAX = 300, Y_MAX = 3.5;
 function tympXtoC(p, w) { return PAD.left + (p - X_MIN) / (X_MAX - X_MIN) * w; }
 function tympYtoC(y, h) { return PAD.top + (1 - y / Y_MAX) * h; }
 
-function drawTympCanvas(canvas, earData, ear, sweepX) {
+function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
@@ -284,12 +285,14 @@ function drawTympCanvas(canvas, earData, ear, sweepX) {
 
   const { tympType, TPP, gradient, peakAdmittance, ECV } = earData;
 
-  // Dashed normal-range reference box: fixed at ±100 daPa, 0.3–1.4 mmho
+  // Dashed normal-range reference box: ±100 daPa; admittance norms vary by age
+  const normHigh = (ageGroup === 'child') ? 1.0 : 1.4;
+  const normLow  = (ageGroup === 'child') ? 0.2 : 0.3;
   if (clampX >= 0) {
     const bxL = tympXtoC(-100, plotW);
     const bxR = tympXtoC( 100, plotW);
-    const byT = tympYtoC(1.4, plotH);
-    const byB = tympYtoC(0.3, plotH);
+    const byT = tympYtoC(normHigh, plotH);
+    const byB = tympYtoC(normLow,  plotH);
     ctx.setLineDash([4, 3]);
     ctx.strokeStyle = '#888';
     ctx.lineWidth = 1;
@@ -449,7 +452,7 @@ function clearTympCanvases() {
     if (!c) return;
     const ear = i === 0 ? 'right' : 'left';
     const earData = state.currentPatient ? state.currentPatient.ears[ear] : null;
-    drawTympCanvas(c, earData, ear, X_MIN - 1);
+    drawTympCanvas(c, earData, ear, X_MIN - 1, state.ageGroup);
   });
 }
 
@@ -493,7 +496,7 @@ function startTympAnimation() {
   function frame(now) {
     const t = Math.min((now - startTime) / DURATION, 1);
     sweepP = X_MIN + t * (X_MAX - X_MIN);
-    drawTympCanvas(canvas, earData, ear, sweepP);
+    drawTympCanvas(canvas, earData, ear, sweepP, state.ageGroup);
 
     if (t < 1) {
       state.tympAnimFrame = requestAnimationFrame(frame);
@@ -511,7 +514,7 @@ function onTympComplete(ear) {
 
   const canvas = ear === 'right' ? els.canvasR : els.canvasL;
   const earData = state.currentPatient.ears[ear];
-  drawTympCanvas(canvas, earData, ear, X_MAX);
+  drawTympCanvas(canvas, earData, ear, X_MAX, state.ageGroup);
   showTympResults(ear);
 }
 
@@ -775,6 +778,16 @@ document.querySelectorAll('input[name="probe-ear"]').forEach(radio => {
 
 // ─── EVENTS ───────────────────────────────────────────────────────────────────
 els.patientSelect.addEventListener('change', e => selectPatient(e.target.value));
+document.getElementById('wbt-select').addEventListener('change', e => {
+  state.ageGroup = e.target.value === 'Child' ? 'child' : 'adult';
+  if (!state.currentPatient) return;
+  ['right', 'left'].forEach((ear, i) => {
+    const canvas = i === 0 ? els.canvasR : els.canvasL;
+    const earData = state.currentPatient.ears[ear];
+    const sweepX = state.tympDone[ear] ? X_MAX : X_MIN - 1;
+    drawTympCanvas(canvas, earData, ear, sweepX, state.ageGroup);
+  });
+});
 els.startBtn.addEventListener('click', () => {
   if (state.mode === 'tymp') startTympAnimation();
 });
@@ -789,7 +802,7 @@ const resizeObs = new ResizeObserver(() => {
       const canvas = i === 0 ? els.canvasR : els.canvasL;
       const earData = state.currentPatient.ears[ear];
       const sweepX = state.tympDone[ear] ? X_MAX : X_MIN - 1;
-      drawTympCanvas(canvas, earData, ear, sweepX);
+      drawTympCanvas(canvas, earData, ear, sweepX, state.ageGroup);
     });
   }
 });
