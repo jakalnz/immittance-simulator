@@ -64,10 +64,19 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
   const threshold = earData.reflexes[mode][freq];
   const reflexShape = earData.reflexShape || 'standard';
 
-  // Interpretable only when offset is between 20 and 100 daPa from TPP
   const offsetDist = Math.abs(offset - TPP);
-  const isNoisy = tympType === 'Ad' && (offsetDist < 20 || offsetDist > 100);
-  const isAboveThreshold = threshold !== null && level >= threshold;
+
+  // Beyond ±150 daPa from TPP: no measurable reflex for any type
+  const tooFarFromTPP = offsetDist > 150;
+
+  // For non-Ad ears: amplitude scales linearly from full at ≤20 daPa to zero at 150 daPa
+  const pressureScale = (tympType === 'Ad')
+    ? 1
+    : (offsetDist <= 20 ? 1 : Math.max(0, 1 - (offsetDist - 20) / 130));
+
+  // Ad: noisy (artifact oscillations) when outside 20–100 daPa window
+  const isNoisy = tympType === 'Ad' && !tooFarFromTPP && (offsetDist < 20 || offsetDist > 100);
+  const isAboveThreshold = !tooFarFromTPP && threshold !== null && level >= threshold;
 
   const baseSeed = (ear === 'right' ? 0 : 1000) + (mode === 'ipsi' ? 0 : 500) + freq + level;
   // Both noisy and normal traces vary per trial using trialSeed
@@ -162,7 +171,7 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
             shape = exp * taper;
           }
         }
-        y -= amplitude * shape;
+        y -= amplitude * pressureScale * shape;
       }
       trace[i] = y;
     }
