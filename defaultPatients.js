@@ -150,6 +150,66 @@ const DEFAULT_PATIENTS = [
     }
   },
   {
+    id: "p7",
+    name: "Patient G — Right Dead Ear (Anacusis)",
+    ears: {
+      right: {
+        tympType: "A",
+        peakAdmittance: 0.80,
+        TPP: -5,
+        ECV: 1.30,
+        gradient: 72,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: null, 1000: null, 2000: null },
+          contra: { 500: 80, 1000: 80, 2000: 85 }
+        }
+      },
+      left: {
+        tympType: "A",
+        peakAdmittance: 0.75,
+        TPP: -3,
+        ECV: 1.25,
+        gradient: 75,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 85, 1000: 85, 2000: 90 },
+          contra: { 500: null, 1000: null, 2000: null }
+        }
+      }
+    }
+  },
+  {
+    id: "p8",
+    name: "Patient H — Midline Tumour",
+    ears: {
+      right: {
+        tympType: "A",
+        peakAdmittance: 0.85,
+        TPP: -6,
+        ECV: 1.35,
+        gradient: 70,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: null, 1000: null, 2000: null },
+          contra: { 500: null, 1000: null, 2000: null }
+        }
+      },
+      left: {
+        tympType: "A",
+        peakAdmittance: 0.78,
+        TPP: -4,
+        ECV: 1.28,
+        gradient: 73,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 85, 1000: 85, 2000: 90 },
+          contra: { 500: null, 1000: null, 2000: null }
+        }
+      }
+    }
+  },
+  {
     id: "p6",
     name: "Patient F — Right PE Tube (Type B, large ECV)",
     ears: {
