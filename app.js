@@ -666,14 +666,19 @@ function setMode(mode) {
 function updateReflexHeader() {
   const modeLabel = state.mode === 'arts-ipsi' ? 'Ipsi' : 'Contra';
   const earIcon = state.probeEar === 'right' ? '🔴' : '🔵';
-  els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P:${state.offset} daPa  —  ${modeLabel}`;
+  const tpp = state.currentPatient ? (state.currentPatient.ears[state.probeEar].TPP ?? 0) : 0;
+  const tppStr = `${tpp > 0 ? '+' : ''}${tpp}`;
+  els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P:${state.offset} daPa  —  ${modeLabel}  (TPP: ${tppStr} daPa)`;
   els.reflexHeader.className = state.probeEar === 'right' ? 'right' : '';
 }
 
 // ─── OFFSET CONTROL ───────────────────────────────────────────────────────────
 function applyOffset(val) {
   state.offset = val;
-  els.offsetDisplay.textContent = `P = ${val > 0 ? '+' : ''}${val} daPa`;
+  const tpp = state.currentPatient ? (state.currentPatient.ears[state.probeEar]?.TPP ?? 0) : 0;
+  const relOffset = val - tpp;
+  const relStr = `${relOffset > 0 ? '+' : ''}${relOffset} re TPP`;
+  els.offsetDisplay.textContent = `P = ${val > 0 ? '+' : ''}${val} daPa  (${relStr})`;
   updateReflexHeader();
 }
 
