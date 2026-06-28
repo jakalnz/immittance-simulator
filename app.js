@@ -668,7 +668,8 @@ function updateReflexHeader() {
   const earIcon = state.probeEar === 'right' ? '🔴' : '🔵';
   const tpp = state.currentPatient ? (state.currentPatient.ears[state.probeEar].TPP ?? 0) : 0;
   const tppStr = `${tpp > 0 ? '+' : ''}${tpp}`;
-  els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P:${state.offset} daPa  —  ${modeLabel}  (TPP: ${tppStr} daPa)`;
+  const offsetStr = `${state.offset > 0 ? '+' : ''}${state.offset}`;
+  els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P: ${tppStr} daPa  (offset ${offsetStr} daPa)  —  ${modeLabel}`;
   els.reflexHeader.className = state.probeEar === 'right' ? 'right' : '';
 }
 
