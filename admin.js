@@ -20,7 +20,7 @@ function showAdmin() {
   document.getElementById('admin-app').style.display = 'flex';
   loadFromStorage();
   ['right', 'left'].forEach(ear =>
-    ['standard', 'symmetric', 'drifting'].forEach(shape =>
+    ['standard', 'symmetric', 'drifting', 'biphasic'].forEach(shape =>
       drawShapePreview(document.getElementById(`shape-preview-${ear}-${shape}`), shape)
     )
   );
@@ -116,6 +116,20 @@ function drawShapePreview(canvas, shape) {
           if (freq === 2000 && tPost > halfWidth) {
             const rb = tPost - 2 * halfWidth;
             if (rb > 0) shape_val -= 0.30 * Math.exp(-rb * 8);
+          }
+        } else if (shape === 'biphasic') {
+          const mainHalfWidth = freq === 500 ? 0.30 : freq === 1000 ? 0.23 : 0.17;
+          const blipHalfWidth = mainHalfWidth * 0.25;
+          const blipFrac = 0.20;
+          const blip1End = 2 * blipHalfWidth;
+          const mainEnd  = blip1End + 2 * mainHalfWidth;
+          const blip2End = mainEnd + 2 * blipHalfWidth;
+          if (tPost < blip1End) {
+            shape_val = -blipFrac * Math.pow(Math.sin(Math.PI * tPost / blip1End), 2);
+          } else if (tPost < mainEnd) {
+            shape_val = Math.pow(Math.sin(Math.PI * (tPost - blip1End) / (2 * mainHalfWidth)), 2);
+          } else if (tPost < blip2End) {
+            shape_val = -blipFrac * Math.pow(Math.sin(Math.PI * (tPost - mainEnd) / (2 * blipHalfWidth)), 2);
           }
         } else {
           const peakFrac  = freq === 500 ? 0.38 : freq === 1000 ? 0.28 : 0.20;

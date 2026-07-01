@@ -158,6 +158,25 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
             if (rb > 0) shape -= 0.30 * Math.exp(-rb * 8);
           }
 
+        } else if (reflexShape === 'biphasic') {
+          // A small overshoot-and-recover bump brackets the main reflex bell at both
+          // onset and offset, spaced apart by the width of the main dip itself.
+          const mainHalfWidth = (freq === 500 ? 0.30 : freq === 1000 ? 0.23 : 0.17) + shapeJitter * 0.5;
+          const blipHalfWidth = mainHalfWidth * 0.25;
+          const blipFrac = 0.20; // blip amplitude relative to the main deflection
+
+          const blip1End = 2 * blipHalfWidth;
+          const mainEnd  = blip1End + 2 * mainHalfWidth;
+          const blip2End = mainEnd + 2 * blipHalfWidth;
+
+          if (tPost < blip1End) {
+            shape = -blipFrac * Math.pow(Math.sin(Math.PI * tPost / blip1End), 2);
+          } else if (tPost < mainEnd) {
+            shape = Math.pow(Math.sin(Math.PI * (tPost - blip1End) / (2 * mainHalfWidth)), 2);
+          } else if (tPost < blip2End) {
+            shape = -blipFrac * Math.pow(Math.sin(Math.PI * (tPost - mainEnd) / (2 * blipHalfWidth)), 2);
+          }
+
         } else {
           // standard: sin onset, exponential recovery tapered to guarantee return to baseline
           const peakFrac = freq === 500 ? 0.38 : freq === 1000 ? 0.28 : 0.20;
