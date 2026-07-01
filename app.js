@@ -358,14 +358,20 @@ function drawReflexCell(canvas, trace, isPositive) {
   const midY = H / 2;
   const scale = H * 2.5; // scale mmho to pixels
 
-  // Dashed baseline
+  // Dashed baseline/stimulus line: doubles as the reflex baseline reference and the
+  // stimulus-on marker. Starts at the same point as the reflex trace (x=0). Heavier
+  // for the first ~40% of the box, since reflexes start partway through the stimulus
+  // rather than waiting for it to end, then fades to a much lighter weight for the rest.
+  const stimSplit = W * 0.4;
   ctx.setLineDash([2, 2]);
-  ctx.strokeStyle = '#ccc';
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(stimSplit, midY); ctx.stroke();
   ctx.lineWidth = 0.5;
-  ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(stimSplit, midY); ctx.lineTo(W, midY); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Continuous trace across full width
+  // Reflex line: the continuous admittance trace across full width
   ctx.beginPath();
   for (let i = 0; i < N; i++) {
     const x = (i / (N - 1)) * W;
@@ -375,20 +381,6 @@ function drawReflexCell(canvas, trace, isPositive) {
   ctx.strokeStyle = isPositive ? '#1a3acc' : '#1a3acc';
   ctx.lineWidth = 1.5;
   ctx.stroke();
-
-  // Dotted overlay — ends at ~16% of trace, before the deflection begins
-  const dotEnd = Math.round(N * 0.16);
-  ctx.setLineDash([2, 3]);
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let i = 0; i <= dotEnd; i++) {
-    const x = (i / (N - 1)) * W;
-    const y = midY - trace[i] * scale;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-  ctx.setLineDash([]);
 }
 
 // ─── AMPLITUDE CALCULATION ────────────────────────────────────────────────────
