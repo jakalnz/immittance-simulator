@@ -453,6 +453,18 @@ body {
 }
 #toast.show { display: block; }
 
+/* ─── FOOTER ──────────────────────────────────────────────── */
+#page-footer {
+  position: fixed;
+  bottom: 4px;
+  right: 8px;
+  font-size: 11px;
+  color: rgba(128,128,128,0.5);
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
 /* ─── RESPONSIVE ──────────────────────────────────────────── */
 @media (max-width: 900px) {
   .tymp-panels { flex-direction: column; }
