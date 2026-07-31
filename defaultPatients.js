@@ -238,5 +238,35 @@ const DEFAULT_PATIENTS = [
         }
       }
     }
+  },
+  {
+    id: "p1783304677262",
+    name: "OSCA Practice Case 1",
+    ears: {
+      right: {
+        tympType: "A",
+        peakAdmittance: 0.8,
+        TPP: -5,
+        ECV: 1.2,
+        gradient: 40,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 80, 1000: 80, 2000: 80 },
+          contra: { 500: 100, 1000: null, 2000: null }
+        }
+      },
+      left: {
+        tympType: "A",
+        peakAdmittance: 0.8,
+        TPP: 0,
+        ECV: 1.1,
+        gradient: 50,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 95, 1000: null, 2000: null },
+          contra: { 500: 85, 1000: 80, 2000: 85 }
+        }
+      }
+    }
   }
 ];
