@@ -12,7 +12,7 @@ const state = {
   probeEar: 'right',     // which ear the probe is in for reflex view
   trialCount: 0,         // increments each click so repeated presentations vary
   ageGroup: 'adult',     // 'adult' | 'child' — controls tympanogram norm box
-  presentationLog: {},   // [`${ear}-${mode}-${freq}`] = ordered array of levels presented
+  presentationBlocks: [], // ordered [{ key: '${ear}-${mode}', ear, mode, freqLevels: {freq: [levels]} }] — new block each time ear/mode changes
 
   // Test timer
   timerStart: null,      // Date.now() when timer starts, null if not started
@@ -514,7 +514,7 @@ function selectPatient(id) {
   // Pre-compute reflex traces with current offset
   state.reflexTraces = precomputeReflexTraces(state.currentPatient, state.offset);
   state.reflexResults = {};
-  state.presentationLog = {};
+  state.presentationBlocks = [];
   state.selectedCell = null;
 
   // Reset tympanogram canvases
@@ -699,8 +699,16 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
 
   if (state.timerRunning) state.timerBonusMs += 3000;
 
-  const logKey = `${ear}-${mode}-${freq}`;
-  (state.presentationLog[logKey] ||= []).push(level);
+  // Presentation log: a new block starts each time the ear/mode combo
+  // changes, so re-visiting a combo later creates a separate row —
+  // preserving the actual order the student worked in.
+  const blockKey = `${ear}-${mode}`;
+  const lastBlock = state.presentationBlocks[state.presentationBlocks.length - 1];
+  const block = (lastBlock && lastBlock.key === blockKey)
+    ? lastBlock
+    : (state.presentationBlocks.push({ key: blockKey, ear, mode, freqLevels: {} }),
+       state.presentationBlocks[state.presentationBlocks.length - 1]);
+  (block.freqLevels[freq] ||= []).push(level);
 
   // Deselect previous
   document.querySelectorAll('#reflex-grid td.selected')
@@ -791,19 +799,14 @@ function printSummary() {
     return threshold === null ? 'Absent' : `${threshold} dB HL`;
   };
 
-  const presentationLines = [];
-  ['right', 'left'].forEach(ear => {
-    ['ipsi', 'contra'].forEach(mode => {
-      FREQS.forEach(freq => {
-        const levels = state.presentationLog[`${ear}-${mode}-${freq}`];
-        if (!levels || !levels.length) return;
-        const earLabel = ear.charAt(0).toUpperCase() + ear.slice(1);
-        const modeLabel = mode === 'ipsi' ? 'Ipsi' : 'Contra';
-        presentationLines.push(
-          `<div>${earLabel} Probe ${modeLabel} ${FREQ_LABELS[freq]}: ${levels.join(', ')}</div>`
-        );
-      });
-    });
+  const presentationLines = state.presentationBlocks.map(block => {
+    const earLabel = block.ear.charAt(0).toUpperCase() + block.ear.slice(1);
+    const modeLabel = block.mode === 'ipsi' ? 'Ipsi' : 'Contra';
+    const freqLines = FREQS
+      .filter(freq => block.freqLevels[freq] && block.freqLevels[freq].length)
+      .map(freq => `<div style="padding-left:16px">${FREQ_LABELS[freq]}: ${block.freqLevels[freq].join(', ')}</div>`)
+      .join('\n      ');
+    return `<div style="margin-top:6px"><strong>${earLabel} Probe ${modeLabel}</strong></div>\n      ${freqLines}`;
   });
   const presentationSection = presentationLines.length ? `
     <h2>Thresholding Record (Presentation Sequence)</h2>
