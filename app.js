@@ -12,7 +12,60 @@ const state = {
   probeEar: 'right',     // which ear the probe is in for reflex view
   trialCount: 0,         // increments each click so repeated presentations vary
   ageGroup: 'adult',     // 'adult' | 'child' — controls tympanogram norm box
+  presentationLog: {},   // [`${ear}-${mode}-${freq}`] = ordered array of levels presented
+
+  // Test timer
+  timerStart: null,      // Date.now() when timer starts, null if not started
+  timerBonusMs: 0,        // accumulated +3s/+20s additions
+  timerRunning: false,
+  timerFinalMs: null,     // frozen elapsed value once stopped (for print)
+  timerIntervalId: null,
 };
+
+// ─── TEST TIMER ───────────────────────────────────────────────────────────────
+function currentElapsedMs() {
+  if (state.timerFinalMs !== null) return state.timerFinalMs;
+  if (state.timerStart === null) return 0;
+  return Date.now() - state.timerStart + state.timerBonusMs;
+}
+
+function formatElapsed(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${String(sec).padStart(2, '0')}`;
+}
+
+function updateTimerDisplay() {
+  if (els.timerDisplay) els.timerDisplay.textContent = formatElapsed(currentElapsedMs());
+}
+
+function startTimerIfNeeded() {
+  if (state.timerStart !== null) return;
+  state.timerStart = Date.now();
+  state.timerRunning = true;
+  state.timerIntervalId = setInterval(updateTimerDisplay, 250);
+  updateTimerDisplay();
+}
+
+function stopTimer() {
+  if (!state.timerRunning) return;
+  state.timerFinalMs = currentElapsedMs();
+  state.timerRunning = false;
+  if (state.timerIntervalId) clearInterval(state.timerIntervalId);
+  state.timerIntervalId = null;
+  updateTimerDisplay();
+}
+
+function resetTimer() {
+  if (state.timerIntervalId) clearInterval(state.timerIntervalId);
+  state.timerStart = null;
+  state.timerBonusMs = 0;
+  state.timerRunning = false;
+  state.timerFinalMs = null;
+  state.timerIntervalId = null;
+  updateTimerDisplay();
+}
 
 // ─── SEEDED RNG ───────────────────────────────────────────────────────────────
 function seededRng(seed) {
@@ -432,6 +485,7 @@ const els = {
   resultsR:      document.getElementById('results-right'),
   resultsL:      document.getElementById('results-left'),
   sessionDate:   document.getElementById('session-date'),
+  timerDisplay:  document.getElementById('timer-display'),
 };
 
 // ─── PATIENT LOADING ──────────────────────────────────────────────────────────
@@ -460,6 +514,7 @@ function selectPatient(id) {
   // Pre-compute reflex traces with current offset
   state.reflexTraces = precomputeReflexTraces(state.currentPatient, state.offset);
   state.reflexResults = {};
+  state.presentationLog = {};
   state.selectedCell = null;
 
   // Reset tympanogram canvases
@@ -467,6 +522,7 @@ function selectPatient(id) {
   clearTympCanvases();
   clearResults();
   buildReflexGrid();
+  resetTimer();
 }
 
 function clearTympCanvases() {
@@ -641,6 +697,11 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
   if (!state.currentPatient) { showToast('Please select a patient first.'); return; }
   if (level > 110) return;
 
+  if (state.timerRunning) state.timerBonusMs += 3000;
+
+  const logKey = `${ear}-${mode}-${freq}`;
+  (state.presentationLog[logKey] ||= []).push(level);
+
   // Deselect previous
   document.querySelectorAll('#reflex-grid td.selected')
     .forEach(el => el.classList.remove('selected'));
@@ -707,6 +768,8 @@ function applyOffset(val) {
 function printSummary() {
   if (!state.currentPatient) { showToast('Select a patient first.'); return; }
 
+  stopTimer();
+
   const p = state.currentPatient;
   const now = new Date().toLocaleString();
 
@@ -728,9 +791,31 @@ function printSummary() {
     return threshold === null ? 'Absent' : `${threshold} dB HL`;
   };
 
+  const presentationLines = [];
+  ['right', 'left'].forEach(ear => {
+    ['ipsi', 'contra'].forEach(mode => {
+      FREQS.forEach(freq => {
+        const levels = state.presentationLog[`${ear}-${mode}-${freq}`];
+        if (!levels || !levels.length) return;
+        const earLabel = ear.charAt(0).toUpperCase() + ear.slice(1);
+        const modeLabel = mode === 'ipsi' ? 'Ipsi' : 'Contra';
+        presentationLines.push(
+          `<div>${earLabel} Probe ${modeLabel} ${FREQ_LABELS[freq]}: ${levels.join(', ')}</div>`
+        );
+      });
+    });
+  });
+  const presentationSection = presentationLines.length ? `
+    <h2>Thresholding Record (Presentation Sequence)</h2>
+    <div class="print-meta">
+      ${presentationLines.join('\n      ')}
+    </div>
+  ` : '';
+
   const summaryHTML = `
     <h1>Immittance Test Summary</h1>
     <p class="print-meta">Patient: <strong>${p.name}</strong> &nbsp;|&nbsp; Date: ${now}</p>
+    <p class="print-meta">Test duration: <strong>${formatElapsed(state.timerFinalMs ?? 0)}</strong></p>
 
     <h2>Tympanometry (226 Hz)</h2>
     <table class="print-table">
@@ -757,6 +842,7 @@ function printSummary() {
       Note: Reflex thresholds shown are the preset values for this patient.
       Offset used during testing: ${state.offset} daPa.
     </p>
+    ${presentationSection}
   `;
 
   document.getElementById('print-summary').innerHTML = summaryHTML;
@@ -795,6 +881,9 @@ document.getElementById('import-input').addEventListener('change', e => {
 document.querySelectorAll('input[name="probe-ear"]').forEach(radio => {
   radio.addEventListener('change', e => {
     if (!e.target.checked) return;
+    if (state.timerRunning && e.target.value !== state.probeEar) {
+      state.timerBonusMs += 20000;
+    }
     state.probeEar = e.target.value;
     if (state.mode !== 'tymp') {
       state.reflexResults = {};
@@ -817,7 +906,10 @@ document.getElementById('wbt-select').addEventListener('change', e => {
   });
 });
 els.startBtn.addEventListener('click', () => {
-  if (state.mode === 'tymp') startTympAnimation();
+  if (state.mode === 'tymp') {
+    startTimerIfNeeded();
+    startTympAnimation();
+  }
 });
 els.modeBtns.forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
 els.offsetSlider.addEventListener('input', e => applyOffset(parseInt(e.target.value)));
