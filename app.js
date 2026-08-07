@@ -740,6 +740,7 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
 
 // ─── MODE SWITCHING ───────────────────────────────────────────────────────────
 function setMode(mode) {
+  const wasTymp = state.mode === 'tymp';
   state.mode = mode;
   els.modeBtns.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -751,6 +752,7 @@ function setMode(mode) {
   els.offsetSection.classList.toggle('hidden', isTymp);
 
   if (!isTymp) {
+    if (wasTymp) autoShiftOffsetToTPP();
     updateReflexHeader();
     buildReflexGrid();
   }
@@ -774,6 +776,14 @@ function applyOffset(val) {
   const relStr = `${relOffset > 0 ? '+' : ''}${relOffset} re TPP`;
   els.offsetDisplay.textContent = `P = ${val > 0 ? '+' : ''}${val} daPa  (${relStr})`;
   updateReflexHeader();
+}
+
+// Clinical tympanometers automatically park probe pressure at TPP for reflex testing
+function autoShiftOffsetToTPP() {
+  if (!state.currentPatient) return;
+  const tpp = state.currentPatient.ears[state.probeEar]?.TPP ?? 0;
+  els.offsetSlider.value = tpp;
+  applyOffset(tpp);
 }
 
 // ─── PRINT SUMMARY ────────────────────────────────────────────────────────────
@@ -905,6 +915,7 @@ document.querySelectorAll('input[name="probe-ear"]').forEach(radio => {
     state.probeEar = e.target.value;
     if (state.mode !== 'tymp') {
       state.reflexResults = {};
+      autoShiftOffsetToTPP();
       updateReflexHeader();
       buildReflexGrid();
     }
