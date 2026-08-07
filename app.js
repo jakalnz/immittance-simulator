@@ -778,9 +778,11 @@ function applyOffset(val) {
   updateReflexHeader();
 }
 
-// Clinical tympanometers automatically park probe pressure at TPP for reflex testing
+// Clinical tympanometers automatically park probe pressure at TPP for reflex testing —
+// but only once the tympanogram has actually been run to locate that peak.
 function autoShiftOffsetToTPP() {
   if (!state.currentPatient) return;
+  if (!state.tympDone[state.probeEar]) return;
   const tpp = state.currentPatient.ears[state.probeEar]?.TPP ?? 0;
   els.offsetSlider.value = tpp;
   applyOffset(tpp);
