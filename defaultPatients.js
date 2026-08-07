@@ -312,7 +312,7 @@ const DEFAULT_PATIENTS = [
         reflexShape: "standard",
         reflexes: {
           ipsi:  { 500: 95, 1000: 100, 2000: 105 },
-          contra: { 500: 110, 1000: 110, 2000: 110 }
+          contra: { 500: null, 1000: null, 2000: null }
         }
       },
       left: {
@@ -323,8 +323,8 @@ const DEFAULT_PATIENTS = [
         gradient: 250,
         reflexShape: "standard",
         reflexes: {
-          ipsi:  { 500: 110, 1000: 110, 2000: 110 },
-          contra: { 500: 110, 1000: 110, 2000: 110 }
+          ipsi:  { 500: null, 1000: null, 2000: null },
+          contra: { 500: null, 1000: null, 2000: null }
         }
       }
     }
