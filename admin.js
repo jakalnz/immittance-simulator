@@ -30,7 +30,11 @@ function showAdmin() {
 function loadFromStorage() {
   const saved = localStorage.getItem('imm-patients');
   if (saved) {
-    try { patients = JSON.parse(saved); } catch (_) { patients = [...DEFAULT_PATIENTS]; }
+    try { patients = JSON.parse(saved); } catch (_) { patients = []; }
+    const existingNames = new Set(patients.map(p => p.name));
+    DEFAULT_PATIENTS.forEach(dp => {
+      if (!existingNames.has(dp.name)) patients.push(JSON.parse(JSON.stringify(dp)));
+    });
   } else {
     patients = JSON.parse(JSON.stringify(DEFAULT_PATIENTS)); // deep copy
   }
