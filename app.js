@@ -1,6 +1,7 @@
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const state = {
   patients: [],
+  studentName: null,     // captured via prompt() at first print
   currentPatient: null,
   mode: 'tymp',          // 'tymp' | 'arts-ipsi' | 'arts-contra'
   offset: 0,
@@ -19,6 +20,7 @@ const state = {
   timerBonusMs: 0,        // accumulated +3s/+20s additions
   timerRunning: false,
   timerFinalMs: null,     // frozen elapsed value once stopped (for print)
+  timerRawFinalMs: null,   // frozen elapsed value once stopped, excluding bonus time
   timerIntervalId: null,
 };
 
@@ -51,6 +53,7 @@ function startTimerIfNeeded() {
 function stopTimer() {
   if (!state.timerRunning) return;
   state.timerFinalMs = currentElapsedMs();
+  state.timerRawFinalMs = state.timerFinalMs - state.timerBonusMs;
   state.timerRunning = false;
   if (state.timerIntervalId) clearInterval(state.timerIntervalId);
   state.timerIntervalId = null;
@@ -63,6 +66,7 @@ function resetTimer() {
   state.timerBonusMs = 0;
   state.timerRunning = false;
   state.timerFinalMs = null;
+  state.timerRawFinalMs = null;
   state.timerIntervalId = null;
   updateTimerDisplay();
 }
@@ -778,8 +782,15 @@ function printSummary() {
 
   stopTimer();
 
+  if (!state.studentName) {
+    const entered = prompt('Enter your name for this report:');
+    state.studentName = (entered && entered.trim()) ? entered.trim() : 'Student';
+  }
+
   const p = state.currentPatient;
   const now = new Date().toLocaleString();
+  const sanitizeForFilename = (s) => s.replace(/[/\\:*?"<>|]/g, '').trim();
+  const dateStr = new Date().toISOString().slice(0, 10);
 
   const tympRow = (ear) => {
     const d = p.ears[ear];
@@ -818,7 +829,7 @@ function printSummary() {
   const summaryHTML = `
     <h1>Immittance Test Summary</h1>
     <p class="print-meta">Patient: <strong>${p.name}</strong> &nbsp;|&nbsp; Date: ${now}</p>
-    <p class="print-meta">Test duration: <strong>${formatElapsed(state.timerFinalMs ?? 0)}</strong></p>
+    <p class="print-meta">Actual Duration: <strong>${formatElapsed(state.timerRawFinalMs ?? 0)}</strong> &nbsp;|&nbsp; Simulated Duration: <strong>${formatElapsed(state.timerFinalMs ?? 0)}</strong></p>
 
     <h2>Tympanometry (226 Hz)</h2>
     <table class="print-table">
@@ -849,7 +860,11 @@ function printSummary() {
   `;
 
   document.getElementById('print-summary').innerHTML = summaryHTML;
+
+  const originalTitle = document.title;
+  document.title = `immittance-sim ${sanitizeForFilename(p.name)} ${sanitizeForFilename(state.studentName)} ${dateStr}`;
   window.print();
+  document.title = originalTitle;
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
