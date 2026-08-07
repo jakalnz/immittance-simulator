@@ -268,5 +268,65 @@ const DEFAULT_PATIENTS = [
         }
       }
     }
+  },
+  {
+    id: "p1783915426735",
+    name: "OSCA Practice Case 2",
+    ears: {
+      right: {
+        tympType: "A",
+        peakAdmittance: 1.2,
+        TPP: 5,
+        ECV: 1.5,
+        gradient: 75,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: null, 1000: null, 2000: null },
+          contra: { 500: null, 1000: null, 2000: null }
+        }
+      },
+      left: {
+        tympType: "A",
+        peakAdmittance: 1.1,
+        TPP: 0,
+        ECV: 1.7,
+        gradient: 80,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: null, 1000: 100, 2000: 100 },
+          contra: { 500: null, 1000: null, 2000: null }
+        }
+      }
+    }
+  },
+  {
+    id: "p1786059425161",
+    name: "OSCA Practice Case 3",
+    ears: {
+      right: {
+        tympType: "C",
+        peakAdmittance: 1.3,
+        TPP: -155,
+        ECV: 1.3,
+        gradient: 30,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 95, 1000: 100, 2000: 105 },
+          contra: { 500: 110, 1000: 110, 2000: 110 }
+        }
+      },
+      left: {
+        tympType: "B",
+        peakAdmittance: 0.2,
+        TPP: -120,
+        ECV: 1,
+        gradient: 250,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 110, 1000: 110, 2000: 110 },
+          contra: { 500: 110, 1000: 110, 2000: 110 }
+        }
+      }
+    }
   }
 ];
