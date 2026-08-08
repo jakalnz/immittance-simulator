@@ -758,11 +758,20 @@ function setMode(mode) {
   }
 }
 
+// TPP is only known to the "machine" (and safe to show the student) once that
+// ear's tympanogram has actually been run — otherwise treat it as 0/unmeasured.
+function getKnownTPP(ear) {
+  if (!state.currentPatient) return 0;
+  if (!state.tympDone[ear]) return 0;
+  return state.currentPatient.ears[ear]?.TPP ?? 0;
+}
+
 function updateReflexHeader() {
   const modeLabel = state.mode === 'arts-ipsi' ? 'Ipsi' : 'Contra';
   const earIcon = state.probeEar === 'right' ? '🔴' : '🔵';
-  const tpp = state.currentPatient ? (state.currentPatient.ears[state.probeEar].TPP ?? 0) : 0;
-  const tppStr = `${tpp > 0 ? '+' : ''}${tpp}`;
+  const tppMeasured = state.currentPatient && state.tympDone[state.probeEar];
+  const tpp = getKnownTPP(state.probeEar);
+  const tppStr = tppMeasured ? `${tpp > 0 ? '+' : ''}${tpp}` : '— (not yet measured)';
   const offsetStr = `${state.offset > 0 ? '+' : ''}${state.offset}`;
   els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P: ${tppStr} daPa  (offset ${offsetStr} daPa)  —  ${modeLabel}`;
   els.reflexHeader.className = state.probeEar === 'right' ? 'right' : '';
@@ -771,7 +780,7 @@ function updateReflexHeader() {
 // ─── OFFSET CONTROL ───────────────────────────────────────────────────────────
 function applyOffset(val) {
   state.offset = val;
-  const tpp = state.currentPatient ? (state.currentPatient.ears[state.probeEar]?.TPP ?? 0) : 0;
+  const tpp = getKnownTPP(state.probeEar);
   const relOffset = val - tpp;
   const relStr = `${relOffset > 0 ? '+' : ''}${relOffset} re TPP`;
   els.offsetDisplay.textContent = `P = ${val > 0 ? '+' : ''}${val} daPa  (${relStr})`;
