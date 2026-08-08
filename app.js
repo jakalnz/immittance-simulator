@@ -772,8 +772,9 @@ function updateReflexHeader() {
   const tppMeasured = state.currentPatient && state.tympDone[state.probeEar];
   const tpp = getKnownTPP(state.probeEar);
   const tppStr = tppMeasured ? `${tpp > 0 ? '+' : ''}${tpp}` : '— (not yet measured)';
-  const offsetStr = `${state.offset > 0 ? '+' : ''}${state.offset}`;
-  els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P: ${tppStr} daPa  (offset ${offsetStr} daPa)  —  ${modeLabel}`;
+  const relOffset = state.offset - tpp;
+  const relStr = `${relOffset > 0 ? '+' : ''}${relOffset}`;
+  els.reflexHeader.textContent = `${earIcon}  Reflex  F:226 Hz  P: ${tppStr} daPa  (offset ${relStr} daPa)  —  ${modeLabel}`;
   els.reflexHeader.className = state.probeEar === 'right' ? 'right' : '';
 }
 
