@@ -980,6 +980,23 @@ if (els.canvasL) resizeObs.observe(els.canvasL);
     });
   }
 
+  // Check for a shared single-case link (#case=<base64json>)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const caseParam = hashParams.get('case');
+  if (caseParam) {
+    try {
+      const patient = JSON.parse(decodeURIComponent(escape(atob(caseParam))));
+      loadPatients([patient]);
+      setMode('tymp');
+      applyOffset(0);
+      selectPatient(patient.id);
+      els.patientSelect.value = patient.id;
+      return;
+    } catch (err) {
+      showToast('Invalid share link: ' + err.message);
+    }
+  }
+
   // Try to load patients.json from the server
   let patients = null;
   try {

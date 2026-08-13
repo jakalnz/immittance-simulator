@@ -292,6 +292,42 @@ function exportJSON() {
   showStatus('Downloaded patients.json — commit it to your GitHub repo to share with students.');
 }
 
+function sanitizeForFilename(s) {
+  return s.replace(/[/\\:*?"<>|]/g, '').trim();
+}
+
+function exportCurrentPatientJSON() {
+  const p = patients.find(x => x.id === editingId);
+  if (!p) return;
+  const json = JSON.stringify([p], null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${sanitizeForFilename(p.name) || 'case'}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus(`Downloaded ${p.name}.json`);
+}
+
+function encodePatientForLink(p) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(p))));
+}
+
+async function copyCurrentPatientLink() {
+  const p = patients.find(x => x.id === editingId);
+  if (!p) return;
+  const encoded = encodePatientForLink(p);
+  const base = new URL('index.html', window.location.href).toString();
+  const link = `${base}#case=${encoded}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    showStatus('Share link copied to clipboard.');
+  } catch (err) {
+    showStatus('Could not copy link: ' + err.message);
+  }
+}
+
 // ─── IMPORT ───────────────────────────────────────────────────────────────────
 document.getElementById('import-admin').addEventListener('change', e => {
   const file = e.target.files[0];

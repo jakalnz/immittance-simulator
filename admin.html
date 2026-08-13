@@ -217,6 +217,8 @@
       font-weight: 600;
     }
     .save-row button:hover { background: #3a6f86; }
+    .save-row button.secondary { background: #fff; color: #4a7f96; border: 1px solid #4a7f96; }
+    .save-row button.secondary:hover { background: #eaf4fa; }
     #status-msg { font-size: 12px; color: #2a7a2a; font-style: italic; }
 
     .name-row {
@@ -502,6 +504,8 @@
 
       <div class="save-row">
         <button onclick="saveEdit()">&#128190; Save Patient</button>
+        <button class="secondary" onclick="exportCurrentPatientJSON()">&#11015; Export This Case (.json)</button>
+        <button class="secondary" onclick="copyCurrentPatientLink()">&#128279; Copy Share Link</button>
         <span id="status-msg"></span>
       </div>
 
