@@ -618,13 +618,6 @@ function showTympResults(ear) {
   el.querySelector('[data-field="gradient"]').className   = cls;
   el.querySelector('[data-field="gradient"]').textContent =
     earData.tympType === 'B' ? '—' : earData.gradient;
-
-  // Tympanogram type badge
-  const typeBadge = el.querySelector('[data-field="type"]');
-  if (typeBadge) {
-    typeBadge.className = cls;
-    typeBadge.textContent = `Type ${earData.tympType}`;
-  }
 }
 
 // ─── REFLEX GRID ──────────────────────────────────────────────────────────────
