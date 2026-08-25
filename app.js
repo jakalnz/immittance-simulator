@@ -973,20 +973,32 @@ if (els.canvasL) resizeObs.observe(els.canvasL);
     });
   }
 
-  // Check for a shared single-case link (#case=<base64json>)
+  // Check for a shared single-case link (#case=<compact-binary> or legacy #case=<base64json>)
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const caseParam = hashParams.get('case');
   if (caseParam) {
+    let patient = null;
     try {
-      const patient = JSON.parse(decodeURIComponent(escape(atob(caseParam))));
+      // Legacy links are base64-encoded JSON; try this first since JSON.parse
+      // self-validates and rules out false-positive matches against the new
+      // compact binary format.
+      patient = JSON.parse(decodeURIComponent(escape(atob(caseParam))));
+      if (!patient || typeof patient !== 'object' || !patient.ears) patient = null;
+    } catch (_) { /* not a legacy link */ }
+    if (!patient) {
+      try {
+        patient = decodePatientCompact(caseParam);
+      } catch (err) {
+        showToast('Invalid share link: ' + err.message);
+      }
+    }
+    if (patient) {
       loadPatients([patient]);
       setMode('tymp');
       applyOffset(0);
       selectPatient(patient.id);
       els.patientSelect.value = patient.id;
       return;
-    } catch (err) {
-      showToast('Invalid share link: ' + err.message);
     }
   }
 

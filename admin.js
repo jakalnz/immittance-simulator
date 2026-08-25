@@ -310,19 +310,19 @@ function exportCurrentPatientJSON() {
   showStatus(`Downloaded ${p.name}.json`);
 }
 
-function encodePatientForLink(p) {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(p))));
-}
-
 async function copyCurrentPatientLink() {
   const p = patients.find(x => x.id === editingId);
   if (!p) return;
-  const encoded = encodePatientForLink(p);
+  const encoded = encodePatientCompact(p);
   const base = new URL('index.html', window.location.href).toString();
   const link = `${base}#case=${encoded}`;
   try {
     await navigator.clipboard.writeText(link);
-    showStatus('Share link copied to clipboard.');
+    if (link.length > 255) {
+      showStatus(`Share link copied (${link.length} chars — over 255; shorten the case name to fit Word's link limit).`);
+    } else {
+      showStatus(`Share link copied to clipboard (${link.length} chars).`);
+    }
   } catch (err) {
     showStatus('Could not copy link: ' + err.message);
   }
