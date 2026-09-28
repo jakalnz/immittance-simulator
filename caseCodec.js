@@ -8,7 +8,9 @@
 const CASE_CODEC_VERSION = 1;
 
 const TYMP_TYPES = ['A', 'As', 'Ad', 'Ar', 'B', 'C', 'other'];
-const REFLEX_SHAPES = ['symmetric', 'standard', 'drifting', 'other'];
+// Append new shapes at the end so indices in existing links keep their meaning
+// (3 bits = up to 8 values); 'other' stays at index 3 for the same reason.
+const REFLEX_SHAPES = ['symmetric', 'standard', 'drifting', 'other', 'biphasic'];
 const REFLEX_FREQS = [500, 1000, 2000];
 
 class BitWriter {
@@ -71,7 +73,7 @@ function packEar(w, ear) {
   w.write(encodeTPP(ear.TPP), 10);
   w.write(encodeScaled100(ear.ECV), 9);
   w.write(encodeGradient(ear.gradient), 9);
-  w.write(enumIndex(REFLEX_SHAPES, ear.reflexShape, REFLEX_SHAPES.length - 1), 3);
+  w.write(enumIndex(REFLEX_SHAPES, ear.reflexShape, REFLEX_SHAPES.indexOf('other')), 3);
   for (const side of ['ipsi', 'contra']) {
     for (const f of REFLEX_FREQS) {
       w.write(encodeReflex(ear.reflexes?.[side]?.[f]), 8);
