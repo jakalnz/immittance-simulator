@@ -696,10 +696,14 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
   const threshold = earData.reflexes[mode][freq];
   // Judged on the modelled reflex size, not the measured trace, so baseline
   // noise can't flip a response exactly at threshold.
-  // With a problem fit the trace can't be trusted either way: never shown
-  // as present, and recorded as unclear.
+  // The categoriser goes green when the measured dip reaches the criterion.
+  // With a good fit that only happens at or above threshold. With a problem
+  // fit it only sees the noisy trace, so it can be fooled either way (a
+  // false positive from an artefact, or a reflex lost in the noise); the
+  // result is also recorded as unclear.
   const unclear = !!state.probeFit && state.probeFit.state !== 'good';
-  const positive = !unclear && !isNoisy && threshold !== null && level >= threshold && trace.modelAmplitude >= REFLEX_CRITERION;
+  const reachesCriterion = amplitude >= REFLEX_CRITERION;
+  const positive = !isNoisy && reachesCriterion && (unclear || (threshold !== null && level >= threshold));
   const result = { trace, positive, amplitude, unclear };
   state.reflexResults[`${ear}-${mode}-${freq}-${level}`] = result;
 
