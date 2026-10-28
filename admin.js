@@ -77,7 +77,6 @@ function drawShapePreview(canvas, shape) {
   ctx.clearRect(0, 0, W, H);
 
   const N = 150;
-  const preStim = Math.floor(N * 0.38);
   const amplitude = 0.09;
   const traces = [
     { freq: 500,  color: '#cc6633' },
@@ -103,48 +102,7 @@ function drawShapePreview(canvas, shape) {
 
     for (let i = 0; i < N; i++) {
       const baseline = driftAmp * Math.sin(driftFreq * i + driftPhase);
-      let y = baseline;
-
-      if (i >= preStim) {
-        const tPost = (i - preStim) / (N - preStim);
-        let shape_val = 0;
-
-        if (shape === 'symmetric') {
-          const halfWidth = freq === 500 ? 0.44 : freq === 1000 ? 0.34 : 0.25;
-          if (tPost < 2 * halfWidth)
-            shape_val = Math.pow(Math.sin(Math.PI * tPost / (2 * halfWidth)), 2);
-        } else if (shape === 'drifting') {
-          const halfWidth = freq === 500 ? 0.40 : freq === 1000 ? 0.30 : 0.22;
-          if (tPost < 2 * halfWidth)
-            shape_val = Math.pow(Math.sin(Math.PI * tPost / (2 * halfWidth)), 2);
-          if (freq === 2000 && tPost > halfWidth) {
-            const rb = tPost - 2 * halfWidth;
-            if (rb > 0) shape_val -= 0.30 * Math.exp(-rb * 8);
-          }
-        } else if (shape === 'biphasic') {
-          const mainHalfWidth = freq === 500 ? 0.30 : freq === 1000 ? 0.23 : 0.17;
-          const blipHalfWidth = mainHalfWidth * 0.25;
-          const blipFrac = 0.20;
-          const blip1End = 2 * blipHalfWidth;
-          const mainEnd  = blip1End + 2 * mainHalfWidth;
-          const blip2End = mainEnd + 2 * blipHalfWidth;
-          if (tPost < blip1End) {
-            shape_val = -blipFrac * Math.pow(Math.sin(Math.PI * tPost / blip1End), 2);
-          } else if (tPost < mainEnd) {
-            shape_val = Math.pow(Math.sin(Math.PI * (tPost - blip1End) / (2 * mainHalfWidth)), 2);
-          } else if (tPost < blip2End) {
-            shape_val = -blipFrac * Math.pow(Math.sin(Math.PI * (tPost - mainEnd) / (2 * blipHalfWidth)), 2);
-          }
-        } else {
-          const peakFrac  = freq === 500 ? 0.38 : freq === 1000 ? 0.28 : 0.20;
-          const decayRate = freq === 500 ? 1.6  : freq === 1000 ? 2.4  : 3.4;
-          shape_val = tPost < peakFrac
-            ? Math.sin((tPost / peakFrac) * Math.PI / 2)
-            : Math.exp(-(tPost - peakFrac) * decayRate);
-        }
-        y -= amplitude * shape_val;
-      }
-      pts.push(y);
+      pts.push(baseline - amplitude * reflexShapeValue(shape, freq, i / (N - 1)));
     }
 
     // Scale to canvas
@@ -153,7 +111,7 @@ function drawShapePreview(canvas, shape) {
     ctx.beginPath();
     pts.forEach((y, i) => {
       const cx = (i / (N - 1)) * W;
-      const cy = yMid + y * yScale;
+      const cy = yMid - y * yScale; // dips drawn downward, as in the student view
       if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
     });
     ctx.strokeStyle = color;

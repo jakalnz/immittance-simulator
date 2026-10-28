@@ -133,7 +133,6 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
 
   // Ad: noisy (artifact oscillations) when outside 20–100 daPa window
   const isNoisy = tympType === 'Ad' && !tooFarFromTPP && (offsetDist < 20 || offsetDist > 100);
-  const isAboveThreshold = !tooFarFromTPP && threshold !== null && level >= threshold;
 
   const baseSeed = (ear === 'right' ? 0 : 1000) + (mode === 'ipsi' ? 0 : 500) + freq + level;
   // Both noisy and normal traces vary per trial using trialSeed
@@ -144,7 +143,6 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
 
   const N = 150;
   const trace = new Float32Array(N);
-  const preStim = Math.floor(N * 0.38);
 
   if (isNoisy) {
     // Atypical morphology: slow sinusoidal artifact oscillations.
@@ -163,93 +161,26 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
       const sinusoidal = a1 * Math.sin(f1 * i + ph1) + a2 * Math.sin(f2 * i + ph2);
       trace[i] = sinusoidal + (rng() - 0.5) * 0.006;
     }
+    trace.modelAmplitude = 0;
   } else {
-    // Amplitude varies ±25% trial-to-trial; can dip below 0.02 near threshold
-    const ampJitter = 0.75 + rng() * 0.5;
-    const nominalAmp = Math.min(0.01 + (level - (threshold || 0)) * 0.009, 0.13);
-    const amplitude = nominalAmp * ampJitter;
+    // Size follows the shared growth curve (reflexShape.js), tied to this
+    // ear's peak admittance; trial-to-trial variation is limited to small
+    // baseline noise and, for non-standard shapes, a little width jitter.
+    const amplitude = tooFarFromTPP ? 0 : reflexAmplitude(level, threshold, earData.peakAdmittance) * pressureScale;
+    trace.modelAmplitude = amplitude;
 
     const shapeJitter = (rng() - 0.5) * 0.06;
 
-    // Slow baseline drift: larger when absent/below-threshold, prominent for 'drifting'
-    const hasResponse = isAboveThreshold;
-    const driftAmp   = reflexShape === 'drifting' ? 0.012 + rng() * 0.010
-                     : !hasResponse               ? 0.008 + rng() * 0.006
-                     :                              0.0015;
+    // Slow baseline drift: prominent only for the 'drifting' shape; otherwise
+    // a clean fit gives an almost flat baseline.
+    const driftAmp   = reflexShape === 'drifting' ? 0.012 + rng() * 0.010 : 0.0015;
     const driftFreq  = 0.008 + rng() * 0.006;   // cycles per sample
     const driftPhase = rng() * Math.PI * 2;
-    // Second slow wave for absent responses to add texture
-    const drift2Amp   = !hasResponse ? 0.004 + rng() * 0.004 : 0;
-    const drift2Freq  = 0.014 + rng() * 0.008;
-    const drift2Phase = rng() * Math.PI * 2;
-
-    // Shape onset begins before the formal stimulus marker
-    const earlyOnset = Math.round(N * 0.14);
-    const shapeStart = preStim - earlyOnset;
 
     for (let i = 0; i < N; i++) {
-      const baseline = driftAmp * Math.sin(driftFreq * i + driftPhase)
-                     + drift2Amp * Math.sin(drift2Freq * i + drift2Phase);
-      let y = baseline + (rng() - 0.5) * 0.002;
-
-      if (i >= shapeStart && isAboveThreshold) {
-        const tPost = (i - shapeStart) / (N - shapeStart); // 0→1
-
-        let shape = 0;
-        if (reflexShape === 'symmetric') {
-          // Smooth bell guaranteed to start at 0: sin²(π·t / 2h) over [0, 2h]
-          const halfWidth = (freq === 500 ? 0.44 : freq === 1000 ? 0.34 : 0.25) + shapeJitter * 0.5;
-          if (tPost < 2 * halfWidth) {
-            shape = Math.pow(Math.sin(Math.PI * tPost / (2 * halfWidth)), 2);
-          }
-
-        } else if (reflexShape === 'drifting') {
-          // Same smooth bell on a drifting baseline; 2 kHz adds a positive rebound tail
-          const halfWidth = (freq === 500 ? 0.40 : freq === 1000 ? 0.30 : 0.22) + shapeJitter * 0.5;
-          if (tPost < 2 * halfWidth) {
-            shape = Math.pow(Math.sin(Math.PI * tPost / (2 * halfWidth)), 2);
-          }
-          if (freq === 2000 && tPost > halfWidth) {
-            // positive rebound after the peak
-            const rb = tPost - 2 * halfWidth;
-            if (rb > 0) shape -= 0.30 * Math.exp(-rb * 8);
-          }
-
-        } else if (reflexShape === 'biphasic') {
-          // A small overshoot-and-recover bump brackets the main reflex bell at both
-          // onset and offset, spaced apart by the width of the main dip itself.
-          const mainHalfWidth = (freq === 500 ? 0.30 : freq === 1000 ? 0.23 : 0.17) + shapeJitter * 0.5;
-          const blipHalfWidth = mainHalfWidth * 0.25;
-          const blipFrac = 0.20; // blip amplitude relative to the main deflection
-
-          const blip1End = 2 * blipHalfWidth;
-          const mainEnd  = blip1End + 2 * mainHalfWidth;
-          const blip2End = mainEnd + 2 * blipHalfWidth;
-
-          if (tPost < blip1End) {
-            shape = -blipFrac * Math.pow(Math.sin(Math.PI * tPost / blip1End), 2);
-          } else if (tPost < mainEnd) {
-            shape = Math.pow(Math.sin(Math.PI * (tPost - blip1End) / (2 * mainHalfWidth)), 2);
-          } else if (tPost < blip2End) {
-            shape = -blipFrac * Math.pow(Math.sin(Math.PI * (tPost - mainEnd) / (2 * blipHalfWidth)), 2);
-          }
-
-        } else {
-          // standard: sin onset, exponential recovery tapered to guarantee return to baseline
-          const peakFrac = freq === 500 ? 0.38 : freq === 1000 ? 0.28 : 0.20;
-          const decayRate = freq === 500 ? 1.6 : freq === 1000 ? 2.4 : 3.4;
-          const peak = peakFrac + shapeJitter;
-          if (tPost < peak) {
-            shape = Math.sin((tPost / peak) * Math.PI / 2);
-          } else {
-            const exp  = Math.exp(-(tPost - peak) * decayRate);
-            const taper = Math.max(0, 1 - (tPost - peak) / (1 - peak)); // linear 1→0
-            shape = exp * taper;
-          }
-        }
-        y -= amplitude * pressureScale * shape;
-      }
-      trace[i] = y;
+      const baseline = driftAmp * Math.sin(driftFreq * i + driftPhase);
+      const shape = amplitude > 0 ? reflexShapeValue(reflexShape, freq, i / (N - 1), shapeJitter) : 0;
+      trace[i] = baseline + (rng() - 0.5) * 0.002 - amplitude * shape;
     }
   }
   return trace;
@@ -461,9 +392,8 @@ function drawReflexCell(canvas, trace, isPositive) {
 
 // ─── AMPLITUDE CALCULATION ────────────────────────────────────────────────────
 function getTraceAmplitude(trace) {
-  const preStim = Math.floor(trace.length * 0.38);
   let min = 0;
-  for (let i = preStim; i < trace.length; i++) {
+  for (let i = 0; i < trace.length; i++) {
     if (trace[i] < min) min = trace[i];
   }
   return Math.abs(min);
@@ -722,7 +652,9 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
   const trace = computeReflexTrace(ear, mode, freq, level, state.currentPatient, state.offset, state.trialCount);
   const amplitude = getTraceAmplitude(trace);
   const threshold = earData.reflexes[mode][freq];
-  const positive = !isNoisy && threshold !== null && level >= threshold && amplitude >= 0.02;
+  // Judged on the modelled reflex size, not the measured trace, so baseline
+  // noise can't flip a response exactly at threshold.
+  const positive = !isNoisy && threshold !== null && level >= threshold && trace.modelAmplitude >= REFLEX_CRITERION;
   const result = { trace, positive, amplitude };
   state.reflexResults[`${ear}-${mode}-${freq}-${level}`] = result;
 
