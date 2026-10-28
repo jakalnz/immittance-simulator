@@ -240,6 +240,40 @@ const DEFAULT_PATIENTS = [
     }
   },
   {
+    // Superior semicircular canal dehiscence (third window): a low-frequency
+    // air-bone gap on the audiogram, but the middle ear is normal, so the
+    // tympanogram is Type A and acoustic reflexes are present (unlike
+    // otosclerosis, Patient B). Matches the PTA simulator's SSCD preset.
+    id: "p9",
+    name: "Patient I — Right SSCD (third window)",
+    ears: {
+      right: {
+        tympType: "A",
+        peakAdmittance: 0.85,
+        TPP: -5,
+        ECV: 1.30,
+        gradient: 78,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 85, 1000: 85, 2000: 90 },
+          contra: { 500: 80, 1000: 80, 2000: 85 }
+        }
+      },
+      left: {
+        tympType: "A",
+        peakAdmittance: 0.80,
+        TPP: 0,
+        ECV: 1.35,
+        gradient: 80,
+        reflexShape: "standard",
+        reflexes: {
+          ipsi:  { 500: 85, 1000: 85, 2000: 90 },
+          contra: { 500: 90, 1000: 85, 2000: 85 }
+        }
+      }
+    }
+  },
+  {
     id: "p1783304677262",
     name: "OSCA Practice Case 1",
     ears: {
