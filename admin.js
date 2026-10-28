@@ -154,6 +154,7 @@ function defaultEar() {
     TPP: 0,
     ECV: 1.20,
     gradient: 75,
+    probeFit: { ...DEFAULT_PROBE_FIT },
     reflexes: {
       ipsi:  { 500: 85, 1000: 85, 2000: 90 },
       contra: { 500: 80, 1000: 80, 2000: 85 }
@@ -178,6 +179,9 @@ function editPatient(id) {
     setField(ear, 'TPP', d.TPP);
     setField(ear, 'ECV', d.ECV);
     setField(ear, 'gradient', d.gradient);
+    const fit = probeFitSettings(d);
+    setField(ear, 'probeFitProb', fit.prob);
+    setField(ear, 'probeFitSeverity', fit.severity);
 
     ['ipsi', 'contra'].forEach(mode => {
       [500, 1000, 2000].forEach(freq => {
@@ -212,6 +216,7 @@ function saveEdit() {
     d.TPP           = parseInt(getField(ear, 'TPP')) || 0;
     d.ECV           = parseFloat(getField(ear, 'ECV')) || 1.2;
     d.gradient      = parseInt(getField(ear, 'gradient')) || 75;
+    d.probeFit      = probeFitSettings({ probeFit: { prob: getField(ear, 'probeFitProb'), severity: getField(ear, 'probeFitSeverity') } });
 
     ['ipsi', 'contra'].forEach(mode => {
       [500, 1000, 2000].forEach(freq => {

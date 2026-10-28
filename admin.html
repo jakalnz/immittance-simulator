@@ -370,6 +370,20 @@
             <input type="number" id="right-gradient" step="1" min="0" max="400">
             <span class="field-hint">Normal: 50–150; 0 for Type B</span>
           </div>
+          <div class="field-row">
+            <label>Probe fit problem chance (%)</label>
+            <input type="number" id="right-probeFitProb" step="5" min="0" max="100">
+            <span class="field-hint">Chance each probe insertion gives a noisy fit. 0 = always clean; 100 = always noisy</span>
+          </div>
+          <div class="field-row">
+            <label>Probe fit noise severity</label>
+            <select id="right-probeFitSeverity">
+              <option value="mild">Mild</option>
+              <option value="moderate">Moderate</option>
+              <option value="severe">Severe</option>
+            </select>
+            <span class="field-hint">How noisy a problem fit is</span>
+          </div>
 
           <h3>Reflex Trace Shape — Right Ear</h3>
           <div class="shape-picker" id="shape-picker-right">
@@ -452,6 +466,20 @@
             <input type="number" id="left-gradient" step="1" min="0" max="400">
             <span class="field-hint">Normal: 50–150; 0 for Type B</span>
           </div>
+          <div class="field-row">
+            <label>Probe fit problem chance (%)</label>
+            <input type="number" id="left-probeFitProb" step="5" min="0" max="100">
+            <span class="field-hint">Chance each probe insertion gives a noisy fit. 0 = always clean; 100 = always noisy</span>
+          </div>
+          <div class="field-row">
+            <label>Probe fit noise severity</label>
+            <select id="left-probeFitSeverity">
+              <option value="mild">Mild</option>
+              <option value="moderate">Moderate</option>
+              <option value="severe">Severe</option>
+            </select>
+            <span class="field-hint">How noisy a problem fit is</span>
+          </div>
 
           <h3>Reflex Trace Shape — Left Ear</h3>
           <div class="shape-picker" id="shape-picker-left">
@@ -531,6 +559,7 @@
 <script src="defaultPatients.js"></script>
 <script src="caseCodec.js"></script>
 <script src="reflexShape.js"></script>
+<script src="probeFit.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

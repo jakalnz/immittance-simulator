@@ -5,7 +5,11 @@
 // the free-text name is appended as UTF-8 bytes. The whole thing is
 // base64url-encoded (no padding) so it's URL-hash safe.
 
-const CASE_CODEC_VERSION = 1;
+const CASE_CODEC_VERSION = 2;
+// v2 adds per-ear probe fit (chance 7 bits, severity 2 bits); v1 links
+// still decode, with the default probe fit (always clean).
+const SUPPORTED_CODEC_VERSIONS = [1, 2];
+const PROBE_FIT_SEVERITY_CODES = ['mild', 'moderate', 'severe'];
 
 const TYMP_TYPES = ['A', 'As', 'Ad', 'Ar', 'B', 'C', 'other'];
 // Append new shapes at the end so indices in existing links keep their meaning
@@ -79,9 +83,12 @@ function packEar(w, ear) {
       w.write(encodeReflex(ear.reflexes?.[side]?.[f]), 8);
     }
   }
+  const fit = ear.probeFit || {};
+  w.write(Math.max(0, Math.min(100, Math.round(Number(fit.prob) || 0))), 7);
+  w.write(enumIndex(PROBE_FIT_SEVERITY_CODES, fit.severity, 1), 2);
 }
 
-function unpackEar(r) {
+function unpackEar(r, version) {
   const tympType = TYMP_TYPES[r.read(3)];
   const peakAdmittance = decodeScaled100(r.read(9));
   const TPP = decodeTPP(r.read(10));
@@ -94,7 +101,10 @@ function unpackEar(r) {
       reflexes[side][f] = decodeReflex(r.read(8));
     }
   }
-  return { tympType, peakAdmittance, TPP, ECV, gradient, reflexShape, reflexes };
+  const probeFit = version >= 2
+    ? { prob: Math.min(100, r.read(7)), severity: PROBE_FIT_SEVERITY_CODES[r.read(2)] || 'moderate' }
+    : { prob: 0, severity: 'moderate' };
+  return { tympType, peakAdmittance, TPP, ECV, gradient, reflexShape, reflexes, probeFit };
 }
 
 function base64urlEncode(bytes) {
@@ -127,19 +137,22 @@ function encodePatientCompact(p) {
   return base64urlEncode(out);
 }
 
-// Structured portion is fixed-length: 4 (version) + 2 * (3+9+10+9+9+3+48) bits
-const STRUCTURED_BITS = 4 + 2 * (3 + 9 + 10 + 9 + 9 + 3 + 48);
-const STRUCTURED_BYTES = Math.ceil(STRUCTURED_BITS / 8);
+// Structured portion is fixed-length: 4 (version) + 2 * (3+9+10+9+9+3+48) bits,
+// plus 2 * (7+2) probe-fit bits from v2.
+function structuredBytes(version) {
+  const earBits = 3 + 9 + 10 + 9 + 9 + 3 + 48 + (version >= 2 ? 7 + 2 : 0);
+  return Math.ceil((4 + 2 * earBits) / 8);
+}
 
 function decodePatientCompact(encoded) {
   const bytes = base64urlDecode(encoded);
   const r = new BitReader(bytes);
   const version = r.read(4);
-  if (version !== CASE_CODEC_VERSION) throw new Error('Unsupported share link version');
-  const right = unpackEar(r);
-  const left = unpackEar(r);
+  if (!SUPPORTED_CODEC_VERSIONS.includes(version)) throw new Error('Unsupported share link version');
+  const right = unpackEar(r, version);
+  const left = unpackEar(r, version);
 
-  const nameBytes = bytes.slice(STRUCTURED_BYTES);
+  const nameBytes = bytes.slice(structuredBytes(version));
   const name = new TextDecoder().decode(nameBytes) || 'Shared Case';
 
   return {

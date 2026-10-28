@@ -4,6 +4,9 @@
 // Criterion change in admittance for a present reflex (mmho).
 const REFLEX_CRITERION = 0.02;
 
+// Length of one reflex recording (the trace window), in seconds.
+const REFLEX_RECORD_SECONDS = 3;
+
 // The 'standard' reflex: a smooth sin² dip that starts after the stimulus
 // onset and returns fully to baseline, with no early onset or rebound
 // (after the shape used in Wilding's PTA_Sim immittance simulator).

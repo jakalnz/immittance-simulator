@@ -11,6 +11,9 @@ const state = {
   reflexResults: {},     // [ear][mode][freq][level] = { positive, amplitude }
   selectedCell: null,
   probeEar: 'right',     // which ear the probe is in for reflex view
+  probeFit: null,        // fit drawn when the probe was last inserted (probeFit.js)
+  probeInsertedAt: 0,    // performance.now() at that insertion
+  baselineFrame: null,   // requestAnimationFrame id for the live baseline bar
   trialCount: 0,         // increments each click so repeated presentations vary
   ageGroup: 'adult',     // 'adult' | 'child' — controls tympanogram norm box
   presentationBlocks: [], // ordered [{ key: '${ear}-${mode}', ear, mode, freqLevels: {freq: [levels]} }] — new block each time ear/mode changes
@@ -420,7 +423,38 @@ const els = {
   resultsL:      document.getElementById('results-left'),
   sessionDate:   document.getElementById('session-date'),
   timerDisplay:  document.getElementById('timer-display'),
+  baselineMarker: document.querySelector('#baseline-bar .baseline-marker'),
 };
+
+// ─── PROBE FIT ────────────────────────────────────────────────────────────────
+// (Re)inserting the probe draws a new fit for that ear; see probeFit.js.
+function insertProbe() {
+  if (!state.currentPatient) { state.probeFit = null; return; }
+  state.probeFit = drawProbeFit(state.currentPatient.ears[state.probeEar]);
+  state.probeInsertedAt = performance.now();
+}
+
+function secondsSinceInsertion() {
+  return (performance.now() - state.probeInsertedAt) / 1000;
+}
+
+// Live baseline bar: runs while the reflex view is showing.
+const BASELINE_RANGE = 0.10;
+function updateBaselineBar() {
+  const value = state.probeFit ? probeFitNoise(state.probeFit, secondsSinceInsertion()) : 0;
+  const clamped = Math.max(-BASELINE_RANGE, Math.min(BASELINE_RANGE, value));
+  if (els.baselineMarker) els.baselineMarker.style.left = `${50 + 50 * clamped / BASELINE_RANGE}%`;
+  state.baselineFrame = requestAnimationFrame(updateBaselineBar);
+}
+
+function startBaselineBar() {
+  if (state.baselineFrame === null) state.baselineFrame = requestAnimationFrame(updateBaselineBar);
+}
+
+function stopBaselineBar() {
+  if (state.baselineFrame !== null) cancelAnimationFrame(state.baselineFrame);
+  state.baselineFrame = null;
+}
 
 // ─── PATIENT LOADING ──────────────────────────────────────────────────────────
 function loadPatients(patients) {
@@ -450,6 +484,7 @@ function selectPatient(id) {
   state.reflexResults = {};
   state.presentationBlocks = [];
   state.selectedCell = null;
+  insertProbe();
 
   // Reset tympanogram canvases
   state.tympDone = { right: false, left: false };
@@ -609,10 +644,11 @@ function buildReflexGrid() {
 
       // Restore previously clicked cells
       if (state.reflexResults[key]) {
-        const { trace, positive, amplitude } = state.reflexResults[key];
+        const { trace, positive, amplitude, unclear } = state.reflexResults[key];
         drawReflexCell(cvs, trace, positive);
         ampDiv.textContent = amplitude.toFixed(2);
         if (positive) td.classList.add('positive');
+        if (unclear) td.classList.add('unclear');
       }
 
       td.addEventListener('click', () => onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level));
@@ -650,17 +686,27 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
   const isNoisy = earData.tympType === 'Ad' && (offsetDist < 20 || offsetDist > 100);
 
   const trace = computeReflexTrace(ear, mode, freq, level, state.currentPatient, state.offset, state.trialCount);
+  // The probe-fit noise from now until the end of the recording is added to
+  // the reflex, so a poor fit can hide a reflex or fake one.
+  const recordStart = secondsSinceInsertion();
+  for (let i = 0; i < trace.length; i++) {
+    trace[i] += probeFitNoise(state.probeFit, recordStart + REFLEX_RECORD_SECONDS * i / (trace.length - 1));
+  }
   const amplitude = getTraceAmplitude(trace);
   const threshold = earData.reflexes[mode][freq];
   // Judged on the modelled reflex size, not the measured trace, so baseline
   // noise can't flip a response exactly at threshold.
-  const positive = !isNoisy && threshold !== null && level >= threshold && trace.modelAmplitude >= REFLEX_CRITERION;
-  const result = { trace, positive, amplitude };
+  // With a problem fit the trace can't be trusted either way: never shown
+  // as present, and recorded as unclear.
+  const unclear = !!state.probeFit && state.probeFit.state !== 'good';
+  const positive = !unclear && !isNoisy && threshold !== null && level >= threshold && trace.modelAmplitude >= REFLEX_CRITERION;
+  const result = { trace, positive, amplitude, unclear };
   state.reflexResults[`${ear}-${mode}-${freq}-${level}`] = result;
 
   drawReflexCell(cvs, result.trace, result.positive);
   ampDiv.textContent = result.amplitude.toFixed(2);
   td.classList.toggle('positive', result.positive);
+  td.classList.toggle('unclear', result.unclear);
 }
 
 // ─── MODE SWITCHING ───────────────────────────────────────────────────────────
@@ -680,6 +726,9 @@ function setMode(mode) {
     if (wasTymp) autoShiftOffsetToTPP();
     updateReflexHeader();
     buildReflexGrid();
+    startBaselineBar();
+  } else {
+    stopBaselineBar();
   }
 }
 
@@ -850,6 +899,7 @@ document.querySelectorAll('input[name="probe-ear"]').forEach(radio => {
       state.timerBonusMs += 20000;
     }
     state.probeEar = e.target.value;
+    insertProbe();
     if (state.mode !== 'tymp') {
       state.reflexResults = {};
       autoShiftOffsetToTPP();
@@ -857,6 +907,13 @@ document.querySelectorAll('input[name="probe-ear"]').forEach(radio => {
       buildReflexGrid();
     }
   });
+});
+
+document.getElementById('reseat-btn').addEventListener('click', () => {
+  if (!state.currentPatient) { showToast('Please select a patient first.'); return; }
+  if (state.timerRunning) state.timerBonusMs += 10000;
+  insertProbe();
+  showToast('Probe reseated');
 });
 
 // ─── EVENTS ───────────────────────────────────────────────────────────────────
