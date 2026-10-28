@@ -166,10 +166,10 @@ function computeReflexTrace(ear, mode, freq, level, patient, offset, trialSeed) 
     }
     trace.modelAmplitude = 0;
   } else {
-    // Size follows the shared growth curve (reflexShape.js), tied to this
-    // ear's peak admittance; trial-to-trial variation is limited to small
-    // baseline noise and, for non-standard shapes, a little width jitter.
-    const amplitude = tooFarFromTPP ? 0 : reflexAmplitude(level, threshold, earData.peakAdmittance) * pressureScale;
+    // Size follows the shared growth curve (reflexShape.js) and varies ±25%
+    // trial-to-trial, so it can fall below the criterion near threshold.
+    const ampJitter = 0.75 + rng() * 0.5;
+    const amplitude = tooFarFromTPP ? 0 : reflexAmplitude(level, threshold, ampJitter) * pressureScale;
     trace.modelAmplitude = amplitude;
 
     const shapeJitter = (rng() - 0.5) * 0.06;

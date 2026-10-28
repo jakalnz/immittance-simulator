@@ -13,22 +13,13 @@ const REFLEX_RECORD_SECONDS = 3;
 const STANDARD_DIP_START = 0.2;
 const STANDARD_DIP_END = 0.8;
 
-// Reflex size (mmho) at a given stimulus level:
-// - nothing more than 5 dB below threshold
-// - a linear ramp up to the criterion over the 5 dB below threshold
-// - exactly the criterion at threshold
-// - above threshold, saturating growth (10 dB constant) towards a ceiling of
-//   20% of the probe ear's peak admittance, so stiff ears give small reflexes
-//   and floppy ears large ones. If that ceiling is below the criterion the
-//   reflex can never reach it.
-function reflexAmplitude(level, threshold, peakAdmittance) {
-  if (threshold === null || threshold === undefined) return 0;
-  const cap = 0.2 * Math.max(0, Number(peakAdmittance) || 0);
-  const onset = Math.min(REFLEX_CRITERION, cap);
-  const delta = level - threshold;
-  if (delta <= -5) return 0;
-  if (delta < 0) return onset * (delta + 5) / 5;
-  return onset + (cap - onset) * (1 - Math.exp(-delta / 10));
+// Reflex size (mmho) at a given stimulus level: nothing below threshold,
+// then 0.01 mmho at threshold growing by 0.009 mmho per dB up to 0.13 mmho,
+// scaled by a trial-to-trial jitter factor (0.75–1.25). Near threshold the
+// size can fall either side of the criterion.
+function reflexAmplitude(level, threshold, jitter = 1) {
+  if (threshold === null || threshold === undefined || level < threshold) return 0;
+  return Math.min(0.01 + (level - threshold) * 0.009, 0.13) * jitter;
 }
 
 // Normalised reflex deflection (0 = baseline, 1 = full dip) at window time t.
