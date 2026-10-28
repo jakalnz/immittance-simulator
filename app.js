@@ -101,7 +101,7 @@ function computeTympPoints(earData, noiseSeed) {
   const bWave2Phase = rng() * Math.PI * 2;
 
   let sampleIdx = 0;
-  for (let p = -600; p <= 300; p += 4) {
+  for (let p = X_MIN; p <= X_MAX; p += 4) {
     let y = 0;
     if (tympType === 'B') {
       const wander = bWave1Amp * Math.sin(bWave1Freq * sampleIdx + bWave1Phase)
@@ -215,7 +215,11 @@ function precomputeReflexTraces(patient, offset) {
 
 // ─── CANVAS DRAWING ───────────────────────────────────────────────────────────
 const PAD = { top: 22, right: 55, bottom: 32, left: 48 };
-const X_MIN = -600, X_MAX = 300, Y_MAX = 3.5;
+// Pressure sweep, negative to positive, over the usual clinical range.
+const X_MIN = -400, X_MAX = 200, Y_MAX = 3.5;
+
+const TYMP_TICKS = [-400, -300, -200, -100, 0, 100, 200]; // grid lines
+const TYMP_LABELS = [-400, -200, 0, 200];
 
 function tympXtoC(p, w) { return PAD.left + (p - X_MIN) / (X_MAX - X_MIN) * w; }
 function tympYtoC(y, h) { return PAD.top + (1 - y / Y_MAX) * h; }
@@ -237,7 +241,6 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
 
   const isRight = ear === 'right';
   const bgColor   = isRight ? 'rgba(255,235,235,0.9)' : 'rgba(235,240,255,0.9)';
-  const fillColor = isRight ? 'rgba(220,80,80,0.18)'  : 'rgba(60,100,220,0.15)';
   const lineColor = isRight ? '#cc3333' : '#3355cc';
   const ecvColor  = isRight ? '#aa2222' : '#2233aa';
 
@@ -248,7 +251,7 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
   // Grid
   ctx.strokeStyle = '#d0d0d0';
   ctx.lineWidth = 0.5;
-  [-600, -300, 0, 300].forEach(p => {
+  TYMP_TICKS.forEach(p => {
     const x = tympXtoC(p, plotW);
     ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top + plotH); ctx.stroke();
   });
@@ -265,7 +268,7 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
     ctx.fillText(y, PAD.left - 5, tympYtoC(y, plotH) + 4);
   });
   ctx.textAlign = 'center';
-  [-600, -300, 0, 300].forEach(p => {
+  TYMP_LABELS.forEach(p => {
     ctx.fillText(p, tympXtoC(p, plotW), PAD.top + plotH + 16);
   });
 
@@ -280,17 +283,6 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
 
   const pts = earData._points;
   const clampX = sweepX !== undefined ? sweepX : X_MAX;
-
-  // Fill below curve
-  ctx.beginPath();
-  ctx.moveTo(tympXtoC(-600, plotW), tympYtoC(0, plotH));
-  pts.forEach(({ p, y }) => {
-    if (p <= clampX) ctx.lineTo(tympXtoC(p, plotW), tympYtoC(y, plotH));
-  });
-  ctx.lineTo(tympXtoC(Math.min(clampX, X_MAX), plotW), tympYtoC(0, plotH));
-  ctx.closePath();
-  ctx.fillStyle = fillColor;
-  ctx.fill();
 
   // Curve line
   ctx.beginPath();
