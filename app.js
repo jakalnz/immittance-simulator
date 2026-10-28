@@ -16,6 +16,8 @@ const state = {
   baselineFrame: null,   // requestAnimationFrame id for the live baseline bar
   trialCount: 0,         // increments each click so repeated presentations vary
   ageGroup: 'adult',     // 'adult' | 'child' — controls tympanogram norm box
+  journal: [],           // every TYMP run and ART presentation, for the Log / CSV
+  reflexHistory: {},     // [ear-mode-freq-level] = earlier traces, drawn faintly behind the latest
   presentationBlocks: [], // ordered [{ key: '${ear}-${mode}', ear, mode, freqLevels: {freq: [levels]} }] — new block each time ear/mode changes
 
   // Test timer
@@ -352,7 +354,10 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
 }
 
 // ─── REFLEX CELL DRAWING ──────────────────────────────────────────────────────
-function drawReflexCell(canvas, trace, isPositive) {
+// Earlier traces in a cell stay visible (faintly) so repeatability can be judged.
+const REFLEX_HISTORY = 3;
+
+function drawReflexCell(canvas, trace, isPositive, previous = []) {
   if (!canvas || !trace) return;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = 120 * dpr;
@@ -380,6 +385,19 @@ function drawReflexCell(canvas, trace, isPositive) {
   ctx.lineWidth = 0.5;
   ctx.beginPath(); ctx.moveTo(stimSplit, midY); ctx.lineTo(W, midY); ctx.stroke();
   ctx.setLineDash([]);
+
+  // Earlier traces at this level, faint, oldest lightest.
+  previous.slice().reverse().forEach((old, k, list) => {
+    ctx.beginPath();
+    for (let i = 0; i < old.length; i++) {
+      const x = (i / (old.length - 1)) * W;
+      const y = midY - old[i] * scale;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = `rgba(26, 58, 204, ${0.15 + 0.12 * (k + 1) / list.length})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
 
   // Reflex line: the continuous admittance trace across full width
   ctx.beginPath();
@@ -482,6 +500,8 @@ function selectPatient(id) {
   // Pre-compute reflex traces with current offset
   state.reflexTraces = precomputeReflexTraces(state.currentPatient, state.offset);
   state.reflexResults = {};
+  state.reflexHistory = {};
+  state.journal = [];
   state.presentationBlocks = [];
   state.selectedCell = null;
   insertProbe();
@@ -563,6 +583,11 @@ function onTympComplete(ear) {
   const earData = state.currentPatient.ears[ear];
   drawTympCanvas(canvas, earData, ear, X_MAX, state.ageGroup);
   showTympResults(ear);
+  addJournal({
+    type: 'TYMP', probeEar: ear,
+    ecv: earData.ECV, peak: earData.peakAdmittance, tpp: earData.TPP,
+    gradient: earData.tympType === 'B' ? null : earData.gradient,
+  });
 }
 
 function showTympResults(ear) {
@@ -645,7 +670,7 @@ function buildReflexGrid() {
       // Restore previously clicked cells
       if (state.reflexResults[key]) {
         const { trace, positive, amplitude, unclear } = state.reflexResults[key];
-        drawReflexCell(cvs, trace, positive);
+        drawReflexCell(cvs, trace, positive, state.reflexHistory[key]);
         ampDiv.textContent = amplitude.toFixed(2);
         if (positive) td.classList.add('positive');
         if (unclear) td.classList.add('unclear');
@@ -694,8 +719,6 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
   }
   const amplitude = getTraceAmplitude(trace);
   const threshold = earData.reflexes[mode][freq];
-  // Judged on the modelled reflex size, not the measured trace, so baseline
-  // noise can't flip a response exactly at threshold.
   // The categoriser goes green when the measured dip reaches the criterion.
   // With a good fit that only happens at or above threshold. With a problem
   // fit it only sees the noisy trace, so it can be fooled either way (a
@@ -705,9 +728,18 @@ function onReflexCellClick(td, cvs, ampDiv, ear, mode, freq, level) {
   const reachesCriterion = amplitude >= REFLEX_CRITERION;
   const positive = !isNoisy && reachesCriterion && (unclear || (threshold !== null && level >= threshold));
   const result = { trace, positive, amplitude, unclear };
-  state.reflexResults[`${ear}-${mode}-${freq}-${level}`] = result;
+  const key = `${ear}-${mode}-${freq}-${level}`;
+  if (state.reflexResults[key]) {
+    state.reflexHistory[key] = [state.reflexResults[key].trace, ...(state.reflexHistory[key] ?? [])].slice(0, REFLEX_HISTORY);
+  }
+  state.reflexResults[key] = result;
+  addJournal({
+    type: 'ART', probeEar: ear, route: mode, stimulusEar: mode === 'ipsi' ? ear : (ear === 'right' ? 'left' : 'right'),
+    freq, level, pressure: state.offset, amplitude,
+    result: unclear ? 'Unclear' : (positive ? 'Present' : 'Absent'),
+  });
 
-  drawReflexCell(cvs, result.trace, result.positive);
+  drawReflexCell(cvs, result.trace, result.positive, state.reflexHistory[key]);
   ampDiv.textContent = result.amplitude.toFixed(2);
   td.classList.toggle('positive', result.positive);
   td.classList.toggle('unclear', result.unclear);
@@ -918,6 +950,76 @@ document.getElementById('reseat-btn').addEventListener('click', () => {
   if (state.timerRunning) state.timerBonusMs += 10000;
   insertProbe();
   showToast('Probe reseated');
+});
+
+// ─── JOURNAL (Log / CSV) ─────────────────────────────────────────────────────
+// Every tympanogram run and reflex presentation in this session, after the
+// journal in Wilding's PTA_Sim. A reflex recorded with a noisy probe fit is
+// "Unclear" whatever the categoriser showed.
+const JOURNAL_COLUMNS = [
+  ['#', (e) => e.number],
+  ['Time', (e) => e.time],
+  ['Test', (e) => (e.type === 'TYMP' ? 'Tympanogram' : `ART ${e.route}`)],
+  ['Probe ear', (e) => e.probeEar],
+  ['Stimulus ear', (e) => e.stimulusEar ?? ''],
+  ['Frequency (Hz)', (e) => e.freq ?? ''],
+  ['Level (dB HL)', (e) => e.level ?? ''],
+  ['Probe pressure (daPa)', (e) => e.pressure ?? ''],
+  ['Peak dip (mmho)', (e) => (e.amplitude === undefined ? '' : e.amplitude.toFixed(3))],
+  ['Result', (e) => e.result ?? ''],
+  ['ECV (ml)', (e) => (e.ecv === undefined ? '' : e.ecv.toFixed(2))],
+  ['Peak admittance (mmho)', (e) => (e.peak === undefined ? '' : e.peak.toFixed(2))],
+  ['Peak pressure (daPa)', (e) => e.tpp ?? ''],
+  ['Gradient (daPa)', (e) => e.gradient ?? ''],
+];
+
+function addJournal(entry) {
+  state.journal.push({ number: state.journal.length + 1, time: new Date().toISOString(), ...entry });
+  if (els.journalDialog?.open) renderJournal();
+}
+
+function renderJournal() {
+  const head = document.getElementById('journal-head');
+  const body = document.getElementById('journal-body');
+  head.innerHTML = '';
+  JOURNAL_COLUMNS.forEach(([name]) => { const th = document.createElement('th'); th.textContent = name; head.appendChild(th); });
+  body.innerHTML = '';
+  state.journal.forEach((e) => {
+    const tr = document.createElement('tr');
+    JOURNAL_COLUMNS.forEach(([, get]) => { const td = document.createElement('td'); td.textContent = get(e); tr.appendChild(td); });
+    body.appendChild(tr);
+  });
+  const arts = state.journal.filter((e) => e.type === 'ART').length;
+  document.getElementById('journal-summary').textContent = state.journal.length
+    ? `${state.journal.length - arts} tympanogram run${state.journal.length - arts === 1 ? '' : 's'}, ${arts} reflex presentation${arts === 1 ? '' : 's'}.`
+    : 'Nothing recorded yet.';
+}
+
+function journalCsv() {
+  const cell = (v) => { const t = String(v ?? ''); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  const rows = [JOURNAL_COLUMNS.map(([n]) => n), ...state.journal.map((e) => JOURNAL_COLUMNS.map(([, get]) => get(e)))];
+  return rows.map((r) => r.map(cell).join(',')).join('\r\n');
+}
+
+els.journalDialog = document.getElementById('journal-dialog');
+document.getElementById('journal-btn').addEventListener('click', () => { renderJournal(); els.journalDialog.showModal(); });
+document.getElementById('journal-close-btn').addEventListener('click', () => els.journalDialog.close());
+document.getElementById('journal-clear-btn').addEventListener('click', () => {
+  if (state.journal.length && !confirm('Clear the log? Download the CSV first if you need it.')) return;
+  state.journal = [];
+  renderJournal();
+});
+document.getElementById('journal-csv-btn').addEventListener('click', () => {
+  const blob = new Blob([journalCsv()], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const name = (state.currentPatient?.name || 'immittance').replace(/[^\w-]+/g, '_');
+  a.href = url;
+  a.download = `${name}-immittance-log.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 // ─── EVENTS ───────────────────────────────────────────────────────────────────

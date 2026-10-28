@@ -427,6 +427,21 @@ body {
 }
 
 
+/* ─── LOG DIALOG ──────────────────────────────────────────── */
+#journal-dialog {
+  width: min(1000px, 95vw);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 13px;
+}
+.journal-note { margin: 0 0 8px; font-size: 12px; color: #444; }
+.journal-scroll { max-height: 55vh; overflow: auto; border: 1px solid #ddd; margin-bottom: 10px; }
+.journal-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.journal-table th, .journal-table td { border-bottom: 1px solid #eee; padding: 3px 6px; text-align: left; white-space: nowrap; }
+.journal-table th { position: sticky; top: 0; background: #f4f4f4; }
+.journal-actions { display: flex; gap: 8px; }
+
 /* ─── PRINT STYLES ────────────────────────────────────────── */
 #print-summary {
   display: none;

@@ -93,6 +93,7 @@
         <input type="file" id="import-input" accept=".json" style="display:none">
       </label>
       <button class="action-btn" id="print-btn" title="Print summary">&#128438; Print</button>
+      <button class="action-btn" id="journal-btn" title="Log of every tympanogram and reflex presentation, with CSV download">&#128203; Log</button>
       <a class="action-btn" href="admin.html" title="Supervisor preset editor">&#9881; Admin</a>
     </div>
 
@@ -185,6 +186,23 @@
 
 <!-- Toast -->
 <div id="toast"></div>
+
+<dialog id="journal-dialog">
+  <h3>Immittance Log</h3>
+  <p class="journal-note">Every tympanogram run and acoustic reflex presentation in this session, with the probe pressure, the measured dip and the result. A reflex recorded while the probe fit was noisy is listed as <strong>Unclear</strong>. The log is cleared when you change patient: download the CSV first if you need it.</p>
+  <p id="journal-summary" class="journal-note"></p>
+  <div class="journal-scroll">
+    <table class="journal-table">
+      <thead><tr id="journal-head"></tr></thead>
+      <tbody id="journal-body"></tbody>
+    </table>
+  </div>
+  <div class="journal-actions">
+    <button type="button" id="journal-csv-btn">Download CSV</button>
+    <button type="button" id="journal-clear-btn">Clear log</button>
+    <button type="button" id="journal-close-btn">Close</button>
+  </div>
+</dialog>
 
 <!-- Footer -->
 <div id="page-footer">© 2026 Michael Sanders</div>
