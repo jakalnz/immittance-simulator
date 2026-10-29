@@ -215,8 +215,10 @@ function precomputeReflexTraces(patient, offset) {
 
 // ─── CANVAS DRAWING ───────────────────────────────────────────────────────────
 const PAD = { top: 22, right: 55, bottom: 32, left: 48 };
-// Pressure sweep, negative to positive, over the usual clinical range.
+// Pressure axis over the usual clinical range. The sweep runs positive to negative
+// (+200 → −400 daPa); the trace is drawn for pressures at or above sweepX.
 const X_MIN = -400, X_MAX = 200, Y_MAX = 3.5;
+const SWEEP_NOT_STARTED = X_MAX + 1, SWEEP_DONE = X_MIN;
 
 const TYMP_TICKS = [-400, -300, -200, -100, 0, 100, 200]; // grid lines
 const TYMP_LABELS = [-400, -200, 0, 200];
@@ -282,13 +284,13 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
   if (!earData || !earData._points) return;
 
   const pts = earData._points;
-  const clampX = sweepX !== undefined ? sweepX : X_MAX;
+  const clampX = sweepX !== undefined ? sweepX : SWEEP_DONE;
 
   // Curve line
   ctx.beginPath();
   let first = true;
   pts.forEach(({ p, y }) => {
-    if (p > clampX) return;
+    if (p < clampX) return;
     const cx = tympXtoC(p, plotW), cy = tympYtoC(y, plotH);
     if (first) { ctx.moveTo(cx, cy); first = false; } else ctx.lineTo(cx, cy);
   });
@@ -301,7 +303,7 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
   // Dashed normal-range reference box: ±100 daPa; admittance norms vary by age
   const normHigh = (ageGroup === 'child') ? 1.0 : 1.4;
   const normLow  = (ageGroup === 'child') ? 0.2 : 0.3;
-  if (clampX >= 0) {
+  if (clampX <= 0) {
     const bxL = tympXtoC(-100, plotW);
     const bxR = tympXtoC( 100, plotW);
     const byT = tympYtoC(normHigh, plotH);
@@ -314,7 +316,7 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
   }
 
   // Vertical crosshair at TPP
-  if (clampX >= TPP && tympType !== 'B') {
+  if (clampX <= TPP && tympType !== 'B') {
     ctx.beginPath();
     ctx.moveTo(tympXtoC(TPP, plotW), PAD.top);
     ctx.lineTo(tympXtoC(TPP, plotW), PAD.top + plotH);
@@ -325,8 +327,8 @@ function drawTympCanvas(canvas, earData, ear, sweepX, ageGroup) {
     ctx.setLineDash([]);
   }
 
-  // ECV bar (right side, separate ml scale shown on far right)
-  if (clampX >= 200) {
+  // ECV bar (right side, separate ml scale shown on far right); measured at +200 at the start of the sweep
+  if (clampX <= X_MAX) {
     const ecvBarX = PAD.left + plotW + 8;
     const ecvBarH = (ECV / 3) * plotH;
     const ecvBarY = PAD.top + plotH - ecvBarH;
@@ -511,7 +513,7 @@ function clearTympCanvases() {
     if (!c) return;
     const ear = i === 0 ? 'right' : 'left';
     const earData = state.currentPatient ? state.currentPatient.ears[ear] : null;
-    drawTympCanvas(c, earData, ear, X_MIN - 1, state.ageGroup);
+    drawTympCanvas(c, earData, ear, SWEEP_NOT_STARTED, state.ageGroup);
   });
 }
 
@@ -548,13 +550,13 @@ function startTympAnimation() {
   els.probeWheel.classList.add('active');
   els.startBtn.disabled = true;
 
-  let sweepP = X_MIN;
+  let sweepP = X_MAX;
   const DURATION = 2200; // ms
   const startTime = performance.now();
 
   function frame(now) {
     const t = Math.min((now - startTime) / DURATION, 1);
-    sweepP = X_MIN + t * (X_MAX - X_MIN);
+    sweepP = X_MAX - t * (X_MAX - X_MIN);
     drawTympCanvas(canvas, earData, ear, sweepP, state.ageGroup);
 
     if (t < 1) {
@@ -573,7 +575,7 @@ function onTympComplete(ear) {
 
   const canvas = ear === 'right' ? els.canvasR : els.canvasL;
   const earData = state.currentPatient.ears[ear];
-  drawTympCanvas(canvas, earData, ear, X_MAX, state.ageGroup);
+  drawTympCanvas(canvas, earData, ear, SWEEP_DONE, state.ageGroup);
   showTympResults(ear);
   addJournal({
     type: 'TYMP', probeEar: ear,
@@ -1022,7 +1024,7 @@ document.getElementById('wbt-select').addEventListener('change', e => {
   ['right', 'left'].forEach((ear, i) => {
     const canvas = i === 0 ? els.canvasR : els.canvasL;
     const earData = state.currentPatient.ears[ear];
-    const sweepX = state.tympDone[ear] ? X_MAX : X_MIN - 1;
+    const sweepX = state.tympDone[ear] ? SWEEP_DONE : SWEEP_NOT_STARTED;
     drawTympCanvas(canvas, earData, ear, sweepX, state.ageGroup);
   });
 });
@@ -1042,7 +1044,7 @@ const resizeObs = new ResizeObserver(() => {
     ['right', 'left'].forEach((ear, i) => {
       const canvas = i === 0 ? els.canvasR : els.canvasL;
       const earData = state.currentPatient.ears[ear];
-      const sweepX = state.tympDone[ear] ? X_MAX : X_MIN - 1;
+      const sweepX = state.tympDone[ear] ? SWEEP_DONE : SWEEP_NOT_STARTED;
       drawTympCanvas(canvas, earData, ear, sweepX, state.ageGroup);
     });
   }
