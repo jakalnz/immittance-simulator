@@ -123,6 +123,7 @@ body {
   box-shadow: 0 0 0 1px rgba(0,0,0,0.6);
 }
 #pressure-indicator.idle .pressure-marker { display: none; }
+#pressure-indicator.hidden { display: none; }
 #pressure-indicator .pressure-scale {
   display: flex;
   justify-content: space-between;
@@ -360,40 +361,6 @@ body {
   padding: 4px;
 }
 #reflex-header.right { color: #cc3333; }
-
-#baseline-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 10px;
-  color: #555;
-}
-#baseline-bar .baseline-track {
-  position: relative;
-  width: 260px;
-  height: 14px;
-  background: #fff;
-  border: 1px solid #bbb;
-  border-radius: 3px;
-}
-#baseline-bar .baseline-zero {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  border-left: 1px dashed #bbb;
-}
-#baseline-bar .baseline-marker {
-  position: absolute;
-  left: 50%;
-  top: 1px;
-  bottom: 1px;
-  width: 2px;
-  margin-left: -1px;
-  background: #222;
-}
-#baseline-bar .baseline-label { margin-left: 6px; }
 
 #reseat-btn {
   margin-top: 6px;

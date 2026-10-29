@@ -52,11 +52,11 @@
         <span class="probe-status-bar"></span>
         <span class="probe-status-text">Out of ear</span>
       </div>
-      <div id="pressure-indicator" title="How far the pressure in the ear canal is from the target pressure. A good seal holds it near the target; a leaky seal lets it drift.">
+      <div id="pressure-indicator" class="hidden" title="How far the pressure in the ear canal is from the target pressure. A good seal holds it near the target; a leaky seal lets it drift.">
         <div class="pressure-track"><div class="pressure-target"></div><div class="pressure-marker"></div></div>
         <div class="pressure-scale"><span>−20</span><span>Target</span><span>20</span></div>
       </div>
-      <button id="reseat-btn" type="button" title="Take the probe out and insert it again. Try this if the baseline won't settle or the traces are noisy.">Reseat probe</button>
+      <button id="reseat-btn" type="button" title="Take the probe out and insert it again. Try this if the probe is leaking, the pressure won't hold near the target or the traces are noisy.">Reseat probe</button>
     </div>
 
     <!-- WBT / mode -->
@@ -175,12 +175,6 @@
     <!-- REFLEX VIEW -->
     <div id="reflex-view" class="view">
       <div id="reflex-header">Reflex  F:226 Hz  P:0 daPa</div>
-      <div id="baseline-bar" title="Live change in admittance at the probe. With a good fit it settles near zero.">
-        <span class="baseline-end">−0.10</span>
-        <div class="baseline-track"><div class="baseline-zero"></div><div class="baseline-marker"></div></div>
-        <span class="baseline-end">+0.10</span>
-        <span class="baseline-label">Δ admittance (mmho)</span>
-      </div>
       <div id="reflex-grid-wrap">
         <table id="reflex-grid"></table>
       </div>

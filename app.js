@@ -13,7 +13,6 @@ const state = {
   probeEar: 'right',     // which ear the probe is in for reflex view
   probeFit: null,        // fit drawn when the probe was last inserted (probeFit.js)
   probeInsertedAt: 0,    // performance.now() at that insertion
-  baselineFrame: null,   // requestAnimationFrame id for the live baseline bar
   trialCount: 0,         // increments each click so repeated presentations vary
   ageGroup: 'adult',     // 'adult' | 'child' — controls tympanogram norm box
   journal: [],           // every TYMP run and ART presentation, for the Log / CSV
@@ -435,7 +434,6 @@ const els = {
   resultsL:      document.getElementById('results-left'),
   sessionDate:   document.getElementById('session-date'),
   timerDisplay:  document.getElementById('timer-display'),
-  baselineMarker: document.querySelector('#baseline-bar .baseline-marker'),
   probeStatus:    document.getElementById('probe-status'),
   probeStatusText: document.querySelector('#probe-status .probe-status-text'),
   pressureIndicator: document.getElementById('pressure-indicator'),
@@ -454,27 +452,10 @@ function secondsSinceInsertion() {
   return (performance.now() - state.probeInsertedAt) / 1000;
 }
 
-// Live baseline bar: runs while the reflex view is showing.
-const BASELINE_RANGE = 0.10;
-function updateBaselineBar() {
-  const value = state.probeFit ? probeFitNoise(state.probeFit, secondsSinceInsertion()) : 0;
-  const clamped = Math.max(-BASELINE_RANGE, Math.min(BASELINE_RANGE, value));
-  if (els.baselineMarker) els.baselineMarker.style.left = `${50 + 50 * clamped / BASELINE_RANGE}%`;
-  state.baselineFrame = requestAnimationFrame(updateBaselineBar);
-}
-
-function startBaselineBar() {
-  if (state.baselineFrame === null) state.baselineFrame = requestAnimationFrame(updateBaselineBar);
-}
-
-function stopBaselineBar() {
-  if (state.baselineFrame !== null) cancelAnimationFrame(state.baselineFrame);
-  state.baselineFrame = null;
-}
-
 // Probe status bar and pressure indicator, as on the clinical unit. The ear-canal
-// pressure drifts from the target with the fit (same noise model as the baseline,
-// on its own seed); if it stays beyond ±20 daPa the status reads Leaking.
+// pressure drifts from the target with the fit (probeFit.js noise model, on its
+// own seed). As on the unit, the indicator and the Leaking status only apply to
+// reflex testing: if the drift stays beyond ±20 daPa the status reads Leaking.
 const PRESSURE_RANGE = 20;        // daPa either side of the target
 const DAPA_PER_MMHO = 500;        // maps fit noise to pressure drift
 const INSERT_SECONDS = 0.4;       // shows Out of ear briefly while (re)inserting
@@ -502,13 +483,13 @@ function updateProbeStatus() {
     if (adPressureUnsettled()) {
       drift += 14 * smoothNoise(seed, t, 1.5, 8) + 6 * smoothNoise(seed, t, 5, 9);
     }
-    if (Math.abs(drift) > PRESSURE_RANGE) {
+    if (state.mode !== 'tymp' && Math.abs(drift) > PRESSURE_RANGE) {
       if (leakSince === null) leakSince = now;
       if (now - leakSince >= LEAK_ONSET_SECONDS) leakUntil = now + LEAK_HOLD_SECONDS;
     } else {
       leakSince = null;
     }
-    status = now < leakUntil ? 'leak' : 'in';
+    status = state.mode !== 'tymp' && now < leakUntil ? 'leak' : 'in';
   } else {
     leakSince = null; leakUntil = 0;
   }
@@ -805,14 +786,12 @@ function setMode(mode) {
   els.tympView.classList.toggle('active', isTymp);
   els.reflexView.classList.toggle('active', !isTymp);
   els.offsetSection.classList.toggle('hidden', isTymp);
+  els.pressureIndicator.classList.toggle('hidden', isTymp);
 
   if (!isTymp) {
     if (wasTymp) autoShiftOffsetToTPP();
     updateReflexHeader();
     buildReflexGrid();
-    startBaselineBar();
-  } else {
-    stopBaselineBar();
   }
 }
 
