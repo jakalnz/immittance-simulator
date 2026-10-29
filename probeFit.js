@@ -2,8 +2,9 @@
 // Each time the probe is (re)inserted a fit is drawn from the probe ear's
 // settings: patient.ears[ear].probeFit = { prob: 0–100 (%), severity }.
 // A problem fit is 'unstable' or 'poor' (equally likely); otherwise 'good'.
-// The fit is never shown to the student — they have to spot it from the
-// baseline and traces, and fix it by reseating the probe.
+// The fit is never named to the student — they have to spot it from the
+// baseline, traces and pressure indicator (a poor fit can show Leaking),
+// and fix it by reseating the probe.
 // (Behaviour modelled on the probe-fit exercise in Wilding's PTA_Sim.)
 
 const PROBE_FIT_SEVERITIES = ['mild', 'moderate', 'severe'];

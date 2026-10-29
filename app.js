@@ -436,6 +436,10 @@ const els = {
   sessionDate:   document.getElementById('session-date'),
   timerDisplay:  document.getElementById('timer-display'),
   baselineMarker: document.querySelector('#baseline-bar .baseline-marker'),
+  probeStatus:    document.getElementById('probe-status'),
+  probeStatusText: document.querySelector('#probe-status .probe-status-text'),
+  pressureIndicator: document.getElementById('pressure-indicator'),
+  pressureMarker: document.querySelector('#pressure-indicator .pressure-marker'),
 };
 
 // ─── PROBE FIT ────────────────────────────────────────────────────────────────
@@ -467,6 +471,56 @@ function stopBaselineBar() {
   if (state.baselineFrame !== null) cancelAnimationFrame(state.baselineFrame);
   state.baselineFrame = null;
 }
+
+// Probe status bar and pressure indicator, as on the clinical unit. The ear-canal
+// pressure drifts from the target with the fit (same noise model as the baseline,
+// on its own seed); if it stays beyond ±20 daPa the status reads Leaking.
+const PRESSURE_RANGE = 20;        // daPa either side of the target
+const DAPA_PER_MMHO = 500;        // maps fit noise to pressure drift
+const INSERT_SECONDS = 0.4;       // shows Out of ear briefly while (re)inserting
+const LEAK_ONSET_SECONDS = 0.25, LEAK_HOLD_SECONDS = 1;
+let leakSince = null, leakUntil = 0;
+
+function adPressureUnsettled() {
+  if (state.mode === 'tymp' || !state.currentPatient) return false;
+  const earData = state.currentPatient.ears[state.probeEar];
+  if (earData?.tympType !== 'Ad') return false;
+  const offsetDist = Math.abs(state.offset - earData.TPP);
+  return offsetDist < 20 || offsetDist > 100;
+}
+
+function updateProbeStatus() {
+  const now = performance.now() / 1000;
+  const t = state.probeFit ? secondsSinceInsertion() : 0;
+  let status = 'out';
+  let drift = 0;
+  if (state.probeFit && t >= INSERT_SECONDS) {
+    const seed = (state.probeFit.seed ^ 0x9e3779b9) >>> 0;
+    drift = DAPA_PER_MMHO * probeFitNoise({ ...state.probeFit, seed }, t);
+    // A hypermobile (Type Ad) eardrum won't hold the reflex pressure steady
+    // until the offset is moved into the 20–100 daPa window from TPP.
+    if (adPressureUnsettled()) {
+      drift += 14 * smoothNoise(seed, t, 1.5, 8) + 6 * smoothNoise(seed, t, 5, 9);
+    }
+    if (Math.abs(drift) > PRESSURE_RANGE) {
+      if (leakSince === null) leakSince = now;
+      if (now - leakSince >= LEAK_ONSET_SECONDS) leakUntil = now + LEAK_HOLD_SECONDS;
+    } else {
+      leakSince = null;
+    }
+    status = now < leakUntil ? 'leak' : 'in';
+  } else {
+    leakSince = null; leakUntil = 0;
+  }
+
+  els.probeStatus.className = `${status} ${state.probeEar}`;
+  els.probeStatusText.textContent = { out: 'Out of ear', in: 'In ear', leak: 'Leaking' }[status];
+  els.pressureIndicator.classList.toggle('idle', status === 'out');
+  const clamped = Math.max(-PRESSURE_RANGE, Math.min(PRESSURE_RANGE, drift));
+  els.pressureMarker.style.left = `${50 + 50 * clamped / PRESSURE_RANGE}%`;
+  requestAnimationFrame(updateProbeStatus);
+}
+requestAnimationFrame(updateProbeStatus);
 
 // ─── PATIENT LOADING ──────────────────────────────────────────────────────────
 function loadPatients(patients) {
